@@ -76,7 +76,9 @@ scoreHand(integer tricksNS, integer tricksEW) {
     integer vul = llList2Integer(gVulnerable, declarerPartnership);
 
     // Tricks made and needed
-    integer tricksMade = (declarerPartnership == 0) ? tricksNS : tricksEW;
+    integer tricksMade;
+    if (declarerPartnership == 0) tricksMade = tricksNS;
+    else tricksMade = tricksEW;
     integer tricksNeeded = gContractLevel + 6;
     integer overtricks   = tricksMade - tricksNeeded;
 
@@ -102,9 +104,11 @@ scoreHand(integer tricksNS, integer tricksEW) {
             if (gDoubled == 0) {
                 otPts = trickPoints(gContractSuit, gContractLevel) * overtricks;
             } else if (gDoubled == 1) {
-                otPts = (vul ? 200 : 100) * overtricks;
+                if (vul) otPts = 200 * overtricks;
+                else otPts = 100 * overtricks;
             } else {
-                otPts = (vul ? 400 : 200) * overtricks;
+                if (vul) otPts = 400 * overtricks;
+                else otPts = 200 * overtricks;
             }
             aboveDeclarer += otPts;
         }
@@ -116,10 +120,12 @@ scoreHand(integer tricksNS, integer tricksEW) {
         // Slam bonuses
         if (gContractLevel == 6) {
             // Small slam
-            aboveDeclarer += (vul ? 750 : 500);
+            if (vul) aboveDeclarer += 750;
+            else aboveDeclarer += 500;
         } else if (gContractLevel == 7) {
             // Grand slam
-            aboveDeclarer += (vul ? 1500 : 1000);
+            if (vul) aboveDeclarer += 1500;
+            else aboveDeclarer += 1000;
         }
 
         // Apply below-the-line
@@ -145,7 +151,9 @@ scoreHand(integer tricksNS, integer tricksEW) {
             if (gamesDeclarerSide == 2) {
                 // Rubber bonus
                 integer opponentGames = llList2Integer(gGamesWon, 1 - declarerPartnership);
-                integer rubberBonus = (opponentGames == 0) ? 700 : 500;
+                integer rubberBonus;
+                if (opponentGames == 0) rubberBonus = 700;
+                else rubberBonus = 500;
                 aboveDeclarer += rubberBonus;
             }
         }
@@ -159,12 +167,15 @@ scoreHand(integer tricksNS, integer tricksEW) {
         integer undertricks = -overtricks;
 
         if (gDoubled == 0) {
-            aboveDefenders = (vul ? 100 : 50) * undertricks;
+            if (vul) aboveDefenders = 100 * undertricks;
+            else aboveDefenders = 50 * undertricks;
         } else {
             // Doubled undertrick schedule
-            integer first  = vul ? 200 : 100;
-            integer second = vul ? 300 : 200;
-            integer rest   = vul ? 300 : 200;
+            integer first;
+            integer second;
+            integer rest;
+            if (vul) { first = 200; second = 300; rest = 300; }
+            else     { first = 100; second = 200; rest = 200; }
 
             if (undertricks >= 1) aboveDefenders += first;
             if (undertricks >= 2) aboveDefenders += second;
@@ -185,11 +196,13 @@ scoreHand(integer tricksNS, integer tricksEW) {
     integer vulEW    = llList2Integer(gVulnerable, 1);
     integer rubberDone = (gamesNS == 2 || gamesEW == 2);
 
+    string vulStr = "";
+    if (vulNS) vulStr += " [NS vul]";
+    if (vulEW) vulStr += " [EW vul]";
     llSay(0, "Score — NS: " + (string)(gAboveNS + gBelowNS)
         + "  EW: " + (string)(gAboveEW + gBelowEW)
         + "  Games NS/EW: " + (string)gamesNS + "/" + (string)gamesEW
-        + (vulNS ? " [NS vul]" : "")
-        + (vulEW ? " [EW vul]" : ""));
+        + vulStr);
 
     llMessageLinked(LINK_SET, MSG_SCORE_UPDATE,
         (string)gamesNS + "|" + (string)gamesEW + "|"

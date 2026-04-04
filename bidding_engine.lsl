@@ -244,9 +244,11 @@ auctionComplete() {
     integer suit     = bidSuit(gHighBid);
 
     list suitNames = ["Clubs","Diamonds","Hearts","Spades","NT"];
+    string doubledStr = "";
+    if (gDoubled == 1) doubledStr = " Doubled";
+    else if (gDoubled == 2) doubledStr = " Redoubled";
     llSay(0, "Contract: " + (string)level + llList2String(suitNames, suit)
-        + (gDoubled == 1 ? " Doubled" : gDoubled == 2 ? " Redoubled" : "")
-        + " by " + seatName(declarer));
+        + doubledStr + " by " + seatName(declarer));
 
     llMessageLinked(LINK_SET, MSG_CONTRACT_SET,
         (string)declarer + "|" + (string)level + "|"

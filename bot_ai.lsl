@@ -231,7 +231,7 @@ integer decideBid(integer seat) {
         if ((pSuit == 2 || pSuit == 3) && countSuit(hand, pSuit) >= 3) {
             if (points >= 13) {
                 // Jump to game
-                integer gameLevel = (pSuit == 2 || pSuit == 3) ? 4 : 5;
+                integer gameLevel = 4; // always a major here (pSuit == 2 or 3)
                 integer nextBid = makeBid(gameLevel, pSuit);
                 if (nextBid > gCurrentHighBid) return nextBid;
             }
@@ -391,9 +391,10 @@ integer decidePlay(integer seat) {
             integer bestLen = 0;
             integer s;
             for (s = 0; s < 4; s++) {
-                if (s == gTrump) continue;
-                integer len = countSuit(hand, s);
-                if (len > bestLen) { bestLen = len; best = s; }
+                if (s != gTrump) {
+                    integer len = countSuit(hand, s);
+                    if (len > bestLen) { bestLen = len; best = s; }
+                }
             }
             if (best == -1) {
                 // Only trump left
@@ -467,7 +468,9 @@ storeHand(integer seat, list cards) {
     integer i;
     for (i = 0; i < 13; i++) {
         integer idx = seat * 13 + i;
-        integer val = (i < llGetListLength(cards)) ? llList2Integer(cards, i) : -1;
+        integer val;
+        if (i < llGetListLength(cards)) val = llList2Integer(cards, i);
+        else val = -1;
         gHands = llListReplaceList(gHands, [val], idx, idx);
     }
 }

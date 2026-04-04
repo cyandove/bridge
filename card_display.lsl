@@ -73,18 +73,18 @@ integer gDummySeat = -1;
 // We use a simple text block since we don't know link numbers at script time.
 // ---------------------------------------------------------------------------
 updateDisplay() {
-    string north = llList2String(gIsHuman, 0)
-        ? llList2String(gHumanNames, 0)
-        : llList2String(BOT_NAMES, 0);
-    string south = llList2String(gIsHuman, 1)
-        ? llList2String(gHumanNames, 1)
-        : llList2String(BOT_NAMES, 1);
-    string east  = llList2String(gIsHuman, 2)
-        ? llList2String(gHumanNames, 2)
-        : llList2String(BOT_NAMES, 2);
-    string west  = llList2String(gIsHuman, 3)
-        ? llList2String(gHumanNames, 3)
-        : llList2String(BOT_NAMES, 3);
+    string north;
+    if (llList2Integer(gIsHuman, 0)) north = llList2String(gHumanNames, 0);
+    else north = llList2String(BOT_NAMES, 0);
+    string south;
+    if (llList2Integer(gIsHuman, 1)) south = llList2String(gHumanNames, 1);
+    else south = llList2String(BOT_NAMES, 1);
+    string east;
+    if (llList2Integer(gIsHuman, 2)) east = llList2String(gHumanNames, 2);
+    else east = llList2String(BOT_NAMES, 2);
+    string west;
+    if (llList2Integer(gIsHuman, 3)) west = llList2String(gHumanNames, 3);
+    else west = llList2String(BOT_NAMES, 3);
 
     // Find each seat's played card in current trick
     list cardPlayed = ["--", "--", "--", "--"];
