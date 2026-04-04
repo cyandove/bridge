@@ -321,13 +321,13 @@ integer fourthBestOfSuit(list hand, integer suit) {
     integer n = llGetListLength(cards);
     integer j;
     for (i = 1; i < n; i++) {
-        integer key = llList2Integer(cards, i);
+        integer val = llList2Integer(cards, i);
         j = i - 1;
-        while (j >= 0 && cardRank(llList2Integer(cards, j)) < cardRank(key)) {
+        while (j >= 0 && cardRank(llList2Integer(cards, j)) < cardRank(val)) {
             cards = llListReplaceList(cards, [llList2Integer(cards, j)], j+1, j+1);
             j--;
         }
-        cards = llListReplaceList(cards, [key], j+1, j+1);
+        cards = llListReplaceList(cards, [val], j+1, j+1);
     }
     return llList2Integer(cards, 3);
 }

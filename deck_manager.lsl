@@ -114,13 +114,13 @@ list sortHand(list hand) {
     integer n = llGetListLength(hand);
     integer i;
     for (i = 1; i < n; i++) {
-        integer key = llList2Integer(hand, i);
+        integer val = llList2Integer(hand, i);
         integer j = i - 1;
-        while (j >= 0 && llList2Integer(hand, j) > key) {
+        while (j >= 0 && llList2Integer(hand, j) > val) {
             hand = llListReplaceList(hand, [llList2Integer(hand, j)], j + 1, j + 1);
             j--;
         }
-        hand = llListReplaceList(hand, [key], j + 1, j + 1);
+        hand = llListReplaceList(hand, [val], j + 1, j + 1);
     }
     return hand;
 }

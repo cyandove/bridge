@@ -79,14 +79,14 @@ updateHandDisplay() {
         integer n = llGetListLength(suitCards);
         integer j;
         for (i = 1; i < n; i++) {
-            integer key = llList2Integer(suitCards, i);
+            integer val = llList2Integer(suitCards, i);
             j = i - 1;
-            while (j >= 0 && cardRank(llList2Integer(suitCards,j)) < cardRank(key)) {
+            while (j >= 0 && cardRank(llList2Integer(suitCards,j)) < cardRank(val)) {
                 suitCards = llListReplaceList(suitCards,
                     [llList2Integer(suitCards,j)], j+1, j+1);
                 j--;
             }
-            suitCards = llListReplaceList(suitCards, [key], j+1, j+1);
+            suitCards = llListReplaceList(suitCards, [val], j+1, j+1);
         }
 
         string row = llList2String(suitPrefixes, s);
