@@ -71,35 +71,15 @@ Seat ID assignments:
 
 ## Step 4 — Build the HUD
 
-Create a separate object to be worn as a HUD attachment. It needs at least one prim for display.
+Create a single HUD object to be worn as a HUD attachment. You only need **one HUD** — the seat pushes its ID to the HUD automatically when the avatar sits, so no per-seat configuration is required.
 
 1. Add `hud_controller.lsl` to the HUD object's inventory
-2. Create a **notecard** named exactly `HUD_CONFIG` inside the HUD object
-3. The notecard must contain a single line:
-   ```
-   seat=0
-   ```
-   Replace `0` with the seat number this HUD is for (0–3)
+2. Name the object `Bridge HUD`
+3. Place it in the **table root prim's inventory** — `seat.lsl` calls `llGiveInventory` when a player sits
 
-You will need **four HUD objects**, one per seat, each with a different `HUD_CONFIG` notecard.
+No notecard is needed. When the avatar sits, the seat script sends `SEAT|N` to the HUD via `llRegionSayTo` on a fixed handshake channel (`-7769`). The HUD stores the seat ID and opens the correct private channel automatically.
 
-Name them clearly, e.g.:
-- `Bridge HUD - North`
-- `Bridge HUD - South`
-- `Bridge HUD - East`
-- `Bridge HUD - West`
-
-**Place the correct HUD in the table's root prim inventory.** `seat.lsl` calls `llGiveInventory(avatarKey, "Bridge HUD")` when a player sits. Each seat script looks for `"Bridge HUD"` by name — if you want to give seat-specific HUDs, change the `HUD_OBJECT` string constant in each seat script to match the name of that seat's HUD.
-
-```lsl
-// In seat_north.lsl
-string HUD_OBJECT = "Bridge HUD - North";
-
-// In seat_south.lsl
-string HUD_OBJECT = "Bridge HUD - South";
-```
-
-Then place each named HUD in the **root prim** inventory so `llGiveInventory` can find it.
+The `notecards/` folder in this repo is no longer needed.
 
 ---
 
@@ -184,9 +164,8 @@ These are hardcoded in `seat.lsl` as `-7770 - SEAT_ID`. Change both `seat.lsl` a
 - [ ] Table object built with root prim + 4 seat prims, all linked
 - [ ] 7 engine scripts in root prim inventory
 - [ ] 4 seat scripts (SEAT_ID 0–3) in corresponding seat prim inventories
-- [ ] 4 HUD objects built, each with correct `HUD_CONFIG` notecard
-- [ ] HUD objects placed in root prim inventory with correct names
-- [ ] `HUD_OBJECT` string in each `seat_*.lsl` matches HUD object name
+- [ ] 1 HUD object built with `hud_controller.lsl`, named `Bridge HUD`
+- [ ] HUD object placed in root prim inventory
 - [ ] Table object permissions set appropriately
 - [ ] HUD objects have Copy+Transfer permissions
 - [ ] Touch table to verify scripts reset cleanly (floating text shows "Bridge Table")

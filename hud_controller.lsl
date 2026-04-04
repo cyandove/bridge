@@ -3,10 +3,12 @@
 // Displays the player's private hand, provides bidding UI (multi-page dialog),
 // and card selection for play.
 //
-// The HUD receives commands from the table over a private channel
-// (listenChannel = -7770 - SEAT_ID) and sends responses back on the same channel.
+// On attach, the HUD listens on a fixed handshake channel (-7769).
+// When the player sits, the seat script sends "SEAT|N" on that channel via
+// llRegionSayTo. The HUD records its seat ID, opens the private channel
+// (-7770 - N), and closes the handshake listen.
 //
-// Commands received from table (via llSay on private channel):
+// Commands received from table (via llRegionSayTo on private channel):
 //   "HAND|seat|c0|c1|..."   — new hand dealt, update display
 //   "BID_PROMPT"            — show bidding dialog
 //   "PLAY_PROMPT"           — enable card selection mode
@@ -14,31 +16,31 @@
 // Commands sent to table (via llSay on private channel):
 //   "BID|bid_integer"
 //   "PLAY|card_integer"
-//
-// The HUD determines its seat ID and private channel at runtime by reading
-// a notecard "HUD_CONFIG" placed in inventory with one line: "seat=N"
-// where N is 0-3.  Falls back to 0 if not found.
+
+// ---------------------------------------------------------------------------
+// Channels
+// ---------------------------------------------------------------------------
+integer HUD_HANDSHAKE_CHANNEL = -7769;  // fixed; seat pushes SEAT|N here on sit
+// Private channel is -7770 - SEAT_ID, set dynamically after handshake
 
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
-integer gSeatID      = 0;
-integer gChannel     = -7770;
-integer gListenHandle = -1;
+integer gSeatID        = -1;   // -1 = not yet assigned
+integer gChannel       = 0;    // private channel, set after handshake
+integer gHandshakeHandle = -1;
+integer gListenHandle  = -1;
 
-list    gHand        = [];   // current hand (card integers)
-integer gSelectMode  = FALSE; // TRUE = waiting for card selection touch
-integer gBidMode     = FALSE; // TRUE = bidding UI active
-integer gBidPage     = 0;    // 0 = levels 1-4, 1 = levels 5-7
+list    gHand          = [];
+integer gSelectMode    = FALSE;
+integer gBidMode       = FALSE;
+integer gBidPage       = 1;
+integer gCardPage      = 0;
 
 // Bid encoding matches bidding_engine.lsl
 integer BID_PASS     = 0;
 integer BID_DOUBLE   = 1;
 integer BID_REDOUBLE = 2;
-
-// Notecard reading state
-integer gNcLine  = 0;
-key     gNcQuery = NULL_KEY;
 
 // ---------------------------------------------------------------------------
 // Card helpers
@@ -46,7 +48,7 @@ key     gNcQuery = NULL_KEY;
 integer cardSuit(integer card) { return card / 13; }
 integer cardRank(integer card) { return card % 13; }
 
-list rankNames = ["2","3","4","5","6","7","8","9","T","J","Q","K","A"];
+list rankNames   = ["2","3","4","5","6","7","8","9","T","J","Q","K","A"];
 list suitSymbols = ["C","D","H","S"];
 
 string cardStr(integer card) {
@@ -55,8 +57,7 @@ string cardStr(integer card) {
 }
 
 // ---------------------------------------------------------------------------
-// Hand display on HUD floating text
-// Format: one row per suit, sorted high to low
+// Hand display
 // ---------------------------------------------------------------------------
 updateHandDisplay() {
     if (llGetListLength(gHand) == 0) {
@@ -68,7 +69,6 @@ updateHandDisplay() {
     list suitPrefixes = ["C: ", "D: ", "H: ", "S: "];
     integer s;
     for (s = 0; s < 4; s++) {
-        // Collect cards of this suit, sort high to low
         list suitCards = [];
         integer i;
         for (i = 0; i < llGetListLength(gHand); i++) {
@@ -106,64 +106,34 @@ updateHandDisplay() {
 }
 
 // ---------------------------------------------------------------------------
-// Bidding dialog — two pages
-// Page 0: levels 1-4 (up to 20 bids) — shown as 3 rows of 4 suits + NT
-// Page 1: levels 5-7
-// Both pages include Pass, Dbl, Rdbl, and a Next/Prev button
-//
-// llDialog max 12 buttons.  Layout per page:
-//   Row 1: 1C 1D 1H 1S 1N   (5 bids for that level)  — page 0
-//   We show one level at a time with Prev/Next navigation.
-//   Actually we'll use a compact layout: 3 bids per row, up to 4 levels.
-//   Simplification: show all suits for two levels per page.
-//
-// Button labels encode the bid integer as text "BID:N" so we can decode.
-// Visible label is human-readable like "1C".
+// Bidding dialog
+// One level per page (5 suit buttons + Pass + Dbl + Rdbl + Prev/Next = 9-10)
 // ---------------------------------------------------------------------------
-
-// Build button list for a bid dialog page
-// Shows 2 levels per page (each level = 5 buttons: 1C 1D 1H 1S 1N)
-// Plus Pass, Dbl, Rdbl = 13 buttons — one too many for llDialog (max 12)
-// So: show Pass+Dbl+Rdbl on every page, 3 suit bids per level, NT on next page
-// Final layout (12 buttons):
-//   [Pass] [Dbl] [Rdbl]
-//   [L1C]  [L1D] [L1H]
-//   [L1S]  [L1N] [L2C]
-//   [L2D]  [L2H] [L2S]   <- L2N omitted, use [Next] instead?
-// Simpler: split into level-per-page (5 + 3 special + next/prev = 8 buttons)
-
-list buildBidPage(integer startLevel) {
-    // 5 suit buttons + Pass + Dbl + Rdbl + Next/Prev = 9 buttons
+list buildBidPage(integer level) {
     list buttons = [];
     list suitLabels = ["C","D","H","S","N"];
     integer suit;
     for (suit = 0; suit < 5; suit++) {
-        integer bid = startLevel * 5 + suit;
-        buttons += [(string)startLevel + llList2String(suitLabels, suit)];
+        buttons += [(string)level + llList2String(suitLabels, suit)];
     }
     buttons += ["Pass", "Dbl", "Rdbl"];
-    if (startLevel > 1) buttons += ["<< Prev"];
-    if (startLevel < 7) buttons += ["Next >>"];
+    if (level > 1) buttons += ["<< Prev"];
+    if (level < 7) buttons += ["Next >>"];
     return buttons;
 }
 
 showBidDialog(integer level) {
     gBidPage = level;
     list buttons = buildBidPage(level);
-    string prompt = "Your bid (Level " + (string)level + "):";
-    llDialog(llGetOwner(), prompt, buttons, gChannel);
+    llDialog(llGetOwner(), "Your bid (Level " + (string)level + "):", buttons, gChannel);
 }
 
 // ---------------------------------------------------------------------------
-// Card selection dialog — show hand as buttons (max 12 at a time)
-// Cards shown as "AS", "TC", etc.
-// If hand > 12 cards, paginate (first deal: 13 cards — need 2 pages)
+// Card selection dialog
 // ---------------------------------------------------------------------------
-integer gCardPage = 0;
-
 showCardDialog(integer page) {
     gCardPage = page;
-    integer start = page * 11;  // 11 cards per page, leave room for Next
+    integer start = page * 11;
     integer end   = start + 10;
     if (end >= llGetListLength(gHand)) end = llGetListLength(gHand) - 1;
 
@@ -193,7 +163,7 @@ integer parseBidButton(string label) {
     if (level >= 1 && level <= 7 && suit >= 0) {
         return level * 5 + suit;
     }
-    return -1; // not a bid
+    return -1;
 }
 
 // ---------------------------------------------------------------------------
@@ -214,13 +184,30 @@ integer parseCardButton(string label) {
 }
 
 // ---------------------------------------------------------------------------
-// Config notecard reading
+// Open handshake listen (waiting for seat to send SEAT|N)
 // ---------------------------------------------------------------------------
-readConfig() {
-    if (llGetInventoryType("HUD_CONFIG") == INVENTORY_NOTECARD) {
-        gNcLine  = 0;
-        gNcQuery = llGetNotecardLine("HUD_CONFIG", gNcLine);
+openHandshake() {
+    if (gHandshakeHandle != -1) llListenRemove(gHandshakeHandle);
+    gHandshakeHandle = llListen(HUD_HANDSHAKE_CHANNEL, "", NULL_KEY, "");
+}
+
+// ---------------------------------------------------------------------------
+// Called once seat ID is known — switch to private channel
+// ---------------------------------------------------------------------------
+assignSeat(integer seatID) {
+    gSeatID  = seatID;
+    gChannel = -7770 - seatID;
+
+    // Close handshake, open private channel
+    if (gHandshakeHandle != -1) {
+        llListenRemove(gHandshakeHandle);
+        gHandshakeHandle = -1;
     }
+    if (gListenHandle != -1) llListenRemove(gListenHandle);
+    gListenHandle = llListen(gChannel, "", NULL_KEY, "");
+
+    list seatNames = ["North","South","East","West"];
+    llSetText("Bridge HUD\n" + llList2String(seatNames, seatID), <0.5,1,0.5>, 1.0);
 }
 
 // ---------------------------------------------------------------------------
@@ -228,38 +215,30 @@ readConfig() {
 // ---------------------------------------------------------------------------
 default {
     state_entry() {
-        gSeatID  = 0;
-        gChannel = -7770;
-        readConfig();
-        llSetText("Bridge HUD\nWaiting...", <0.5,0.5,0.5>, 1.0);
+        gSeatID  = -1;
+        gChannel = 0;
+        gHand    = [];
+        gBidMode    = FALSE;
+        gSelectMode = FALSE;
+        llSetText("Bridge HUD\nAttach & sit", <0.5,0.5,0.5>, 1.0);
+        openHandshake();
     }
 
-    dataserver(key query, string data) {
-        if (query != gNcQuery) return;
-        if (data == EOF) return;
-
-        // Parse "seat=N"
-        list parts = llParseString2List(data, ["="], []);
-        if (llList2String(parts, 0) == "seat") {
-            gSeatID  = (integer)llList2String(parts, 1);
-            gChannel = -7770 - gSeatID;
-        }
-
-        gNcLine++;
-        gNcQuery = llGetNotecardLine("HUD_CONFIG", gNcLine);
-
-        // Open listen after config loaded
-        if (gListenHandle != -1) llListenRemove(gListenHandle);
-        gListenHandle = llListen(gChannel, "", NULL_KEY, "");
-    }
-
-    attach(key id) {
-        if (id != NULL_KEY) {
-            // HUD was attached — open listen channel
-            if (gListenHandle != -1) llListenRemove(gListenHandle);
-            gListenHandle = llListen(gChannel, "", NULL_KEY, "");
-            readConfig();
+    attach(key avatarID) {
+        if (avatarID != NULL_KEY) {
+            // Attached — open handshake listen, reset state
+            gSeatID  = -1;
+            gHand    = [];
+            gBidMode    = FALSE;
+            gSelectMode = FALSE;
+            llSetText("Bridge HUD\nSit to connect", <0.5,0.5,0.5>, 1.0);
+            openHandshake();
         } else {
+            // Detached — clean up listens
+            if (gHandshakeHandle != -1) {
+                llListenRemove(gHandshakeHandle);
+                gHandshakeHandle = -1;
+            }
             if (gListenHandle != -1) {
                 llListenRemove(gListenHandle);
                 gListenHandle = -1;
@@ -268,13 +247,21 @@ default {
     }
 
     listen(integer channel, string name, key id, string message) {
+        // Handshake: seat sends "SEAT|N" when avatar sits
+        if (channel == HUD_HANDSHAKE_CHANNEL) {
+            list parts = llParseString2List(message, ["|"], []);
+            if (llList2String(parts, 0) == "SEAT") {
+                assignSeat((integer)llList2String(parts, 1));
+            }
+            return;
+        }
+
+        // Private channel commands from the table
         if (channel != gChannel) return;
 
-        // Commands from the table
         if (llGetSubString(message, 0, 3) == "HAND") {
             // "HAND|seat|c0|c1|..."
             list parts = llParseString2List(message, ["|"], []);
-            // parts[0]="HAND", parts[1]=seat, parts[2..]=cards
             gHand = [];
             integer i;
             for (i = 2; i < llGetListLength(parts); i++) {
@@ -302,7 +289,7 @@ default {
             return;
         }
 
-        // Responses from dialog buttons
+        // Dialog button responses
         if (gBidMode) {
             if (message == "Next >>") {
                 integer nextPage = gBidPage + 1;
@@ -337,7 +324,6 @@ default {
             integer card = parseCardButton(message);
             if (card >= 0) {
                 gSelectMode = FALSE;
-                // Remove card from local hand display
                 integer idx = llListFindList(gHand, [card]);
                 if (idx != -1) gHand = llDeleteSubList(gHand, idx, idx);
                 updateHandDisplay();
@@ -347,7 +333,6 @@ default {
     }
 
     touch_start(integer total) {
-        // Touch HUD to re-show current dialog if missed
         if (gBidMode)    showBidDialog(gBidPage);
         if (gSelectMode) showCardDialog(gCardPage);
     }
