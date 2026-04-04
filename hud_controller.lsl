@@ -305,11 +305,15 @@ default {
         // Responses from dialog buttons
         if (gBidMode) {
             if (message == "Next >>") {
-                showBidDialog(gBidPage + 1 < 7 ? gBidPage + 1 : 7);
+                integer nextPage = gBidPage + 1;
+                if (nextPage > 7) nextPage = 7;
+                showBidDialog(nextPage);
                 return;
             }
             if (message == "<< Prev") {
-                showBidDialog(gBidPage - 1 > 1 ? gBidPage - 1 : 1);
+                integer prevPage = gBidPage - 1;
+                if (prevPage < 1) prevPage = 1;
+                showBidDialog(prevPage);
                 return;
             }
             integer bid = parseBidButton(message);
