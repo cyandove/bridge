@@ -305,11 +305,11 @@ default {
         // Responses from dialog buttons
         if (gBidMode) {
             if (message == "Next >>") {
-                showBidDialog(llMin(gBidPage + 1, 7));
+                showBidDialog(gBidPage + 1 < 7 ? gBidPage + 1 : 7);
                 return;
             }
             if (message == "<< Prev") {
-                showBidDialog(llMax(gBidPage - 1, 1));
+                showBidDialog(gBidPage - 1 > 1 ? gBidPage - 1 : 1);
                 return;
             }
             integer bid = parseBidButton(message);
