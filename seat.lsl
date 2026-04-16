@@ -232,10 +232,10 @@ default {
 
         } else if (num == MSG_DUMMY_REVEAL) {
             // str = "dummySeat|c0|c1|..."
-            // Declarer is dummy's partner: (dummySeat + 2) % 4
+            // Declarer is dummy's partner: dummySeat ^ 1
             integer dummySeat = (integer)llList2String(
                 llParseString2List(str, ["|"], []), 0);
-            if (gIsHuman && gSeatID == (dummySeat + 2) % 4) {
+            if (gIsHuman && gSeatID == (dummySeat ^ 1)) {
                 llRegionSayTo(gAvatarKey, listenChannel(), "DUMMY_HAND|" + str);
             }
 
@@ -250,7 +250,7 @@ default {
                 } else {
                     string botStr = (string)gSeatID;
                     if (forDummy)
-                        botStr += "|" + (string)((gSeatID + 2) % 4);
+                        botStr += "|" + (string)(gSeatID ^ 1);
                     llMessageLinked(LINK_SET, MSG_BOT_PLAY_REQUEST, botStr, NULL_KEY);
                 }
             }

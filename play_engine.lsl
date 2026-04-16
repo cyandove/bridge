@@ -287,7 +287,7 @@ default {
             gDoubled    = (integer)llList2String(parts, 3);
             gLeader     = (integer)llList2String(parts, 4);
             // Dummy is declarer's partner
-            gDummy = (gDeclarer + 2) % 4;
+            gDummy = gDeclarer ^ 1;
 
             gTrick       = [];
             gLedSuit     = -1;

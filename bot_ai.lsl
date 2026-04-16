@@ -180,7 +180,7 @@ integer isBalanced(list hand) {
 
 // What has partner bid? Returns last real bid by partner, or 0.
 integer partnerLastBid(integer mySeat) {
-    integer partner = (mySeat + 2) % 4;
+    integer partner = mySeat ^ 1;
     integer i;
     integer lastBid = 0;
     for (i = 0; i < llGetListLength(gAuction); i += 2) {

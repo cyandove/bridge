@@ -148,7 +148,7 @@ startBidding() {
 contractSet(string str) {
     list parts = llParseString2List(str, ["|"], []);
     gDeclarer      = (integer)llList2String(parts, 0);
-    gDummy         = (gDeclarer + 2) % 4;
+    gDummy         = gDeclarer ^ 1;
     gContractLevel = (integer)llList2String(parts, 1);
     gContractSuit  = (integer)llList2String(parts, 2);
     gDoubled       = (integer)llList2String(parts, 3);
