@@ -32,6 +32,8 @@ integer gHandshakeHandle = -1;
 integer gListenHandle  = -1;
 
 list    gHand          = [];
+list    gDummyHand     = [];
+integer gPlayingDummy  = FALSE;
 integer gSelectMode    = FALSE;
 integer gBidMode       = FALSE;
 integer gBidPage       = 1;
@@ -105,8 +107,9 @@ updateHandDisplay() {
         }
     }
 
-    if (gBidMode)    display += "\n[BIDDING - touch to bid]";
-    if (gSelectMode) display += "\n[SELECT CARD - touch HUD]";
+    if (gBidMode)                      display += "\n[BIDDING - touch to bid]";
+    if (gSelectMode && !gPlayingDummy) display += "\n[SELECT CARD - touch HUD]";
+    if (gSelectMode &&  gPlayingDummy) display += "\n[PLAY FOR DUMMY - touch HUD]";
 
     llSetText(display, <1,1,1>, 1.0);
 }
@@ -163,20 +166,24 @@ showBidDialog(integer level) {
 // Card selection dialog
 // ---------------------------------------------------------------------------
 showCardDialog(integer page) {
+    list hand = gHand;
+    if (gPlayingDummy) hand = gDummyHand;
     gCardPage = page;
     integer start = page * 11;
     integer end   = start + 10;
-    if (end >= llGetListLength(gHand)) end = llGetListLength(gHand) - 1;
+    if (end >= llGetListLength(hand)) end = llGetListLength(hand) - 1;
 
     list buttons = [];
     integer i;
     for (i = start; i <= end; i++) {
-        buttons += [cardStr(llList2Integer(gHand, i))];
+        buttons += [cardStr(llList2Integer(hand, i))];
     }
-    if (start > 0)                        buttons += ["<< Prev"];
-    if (end < llGetListLength(gHand) - 1) buttons += ["Next >>"];
+    if (start > 0)                       buttons += ["<< Prev"];
+    if (end < llGetListLength(hand) - 1) buttons += ["Next >>"];
 
-    llDialog(llGetOwner(), "Play a card:", buttons, gChannel);
+    string prompt = "Play a card:";
+    if (gPlayingDummy) prompt = "Play a card (dummy):";
+    llDialog(llGetOwner(), prompt, buttons, gChannel);
 }
 
 // ---------------------------------------------------------------------------
@@ -232,6 +239,8 @@ assignSeat(integer seatID) {
     gDoubled     = 0;
     gHighSide    = -1;
     gDoublerSide = -1;
+    gDummyHand   = [];
+    gPlayingDummy = FALSE;
 
     // Close handshake, open private channel
     if (gHandshakeHandle != -1) {
@@ -305,9 +314,22 @@ default {
             for (i = 2; i < llGetListLength(parts); i++) {
                 gHand += [(integer)llList2String(parts, i)];
             }
-            gBidMode    = FALSE;
-            gSelectMode = FALSE;
+            gDummyHand    = [];
+            gPlayingDummy = FALSE;
+            gBidMode      = FALSE;
+            gSelectMode   = FALSE;
             updateHandDisplay();
+            return;
+        }
+
+        if (llGetSubString(message, 0, 9) == "DUMMY_HAND") {
+            // "DUMMY_HAND|seat|c0|c1|..."
+            list parts = llParseString2List(message, ["|"], []);
+            gDummyHand = [];
+            integer i;
+            for (i = 2; i < llGetListLength(parts); i++) {
+                gDummyHand += [(integer)llList2String(parts, i)];
+            }
             return;
         }
 
@@ -325,9 +347,12 @@ default {
             return;
         }
 
-        if (message == "PLAY_PROMPT") {
-            gSelectMode = TRUE;
-            gBidMode    = FALSE;
+        if (llGetSubString(message, 0, 10) == "PLAY_PROMPT") {
+            // "PLAY_PROMPT|forDummy"
+            list parts    = llParseString2List(message, ["|"], []);
+            gPlayingDummy = (integer)llList2String(parts, 1);
+            gSelectMode   = TRUE;
+            gBidMode      = FALSE;
             updateHandDisplay();
             showCardDialog(0);
             return;
@@ -366,8 +391,14 @@ default {
             integer card = parseCardButton(message);
             if (card >= 0) {
                 gSelectMode = FALSE;
-                integer idx = llListFindList(gHand, [card]);
-                if (idx != -1) gHand = llDeleteSubList(gHand, idx, idx);
+                if (gPlayingDummy) {
+                    integer idx = llListFindList(gDummyHand, [card]);
+                    if (idx != -1) gDummyHand = llDeleteSubList(gDummyHand, idx, idx);
+                } else {
+                    integer idx = llListFindList(gHand, [card]);
+                    if (idx != -1) gHand = llDeleteSubList(gHand, idx, idx);
+                }
+                gPlayingDummy = FALSE;
                 updateHandDisplay();
                 llSay(gChannel, "PLAY|" + (string)card);
             }

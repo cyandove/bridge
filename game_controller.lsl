@@ -70,6 +70,7 @@ list gOccupied = [0, 0, 0, 0];
 // Contract from bidding_engine: "declarer|level|suit|doubled"
 // doubled: 0=none 1=doubled 2=redoubled
 integer gDeclarer = -1;
+integer gDummy    = -1;
 integer gContractLevel = 0;
 integer gContractSuit  = 0;   // 0-3 = C D H S, 4 = NT
 integer gDoubled       = 0;
@@ -147,6 +148,7 @@ startBidding() {
 contractSet(string str) {
     list parts = llParseString2List(str, ["|"], []);
     gDeclarer      = (integer)llList2String(parts, 0);
+    gDummy         = (gDeclarer + 2) % 4;
     gContractLevel = (integer)llList2String(parts, 1);
     gContractSuit  = (integer)llList2String(parts, 2);
     gDoubled       = (integer)llList2String(parts, 3);
@@ -162,7 +164,10 @@ contractSet(string str) {
 }
 
 requestPlay(integer seat) {
-    llMessageLinked(LINK_SET, MSG_PLAY_REQUEST, (string)seat, NULL_KEY);
+    integer forDummy = 0;
+    if (seat == gDummy) { seat = gDeclarer; forDummy = 1; }
+    llMessageLinked(LINK_SET, MSG_PLAY_REQUEST,
+        (string)seat + "|" + (string)forDummy, NULL_KEY);
 }
 
 // Called by play_engine via MSG_TRICK_DONE

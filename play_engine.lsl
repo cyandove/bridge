@@ -208,8 +208,10 @@ acceptPlay(integer seat, integer card) {
         finaliseTrick();
     } else {
         integer nextSeat = currentTrickSeat();
-        if (nextSeat == gDummy) nextSeat = gDeclarer;
-        llMessageLinked(LINK_SET, MSG_PLAY_REQUEST, (string)nextSeat, NULL_KEY);
+        integer forDummy = 0;
+        if (nextSeat == gDummy) { nextSeat = gDeclarer; forDummy = 1; }
+        llMessageLinked(LINK_SET, MSG_PLAY_REQUEST,
+            (string)nextSeat + "|" + (string)forDummy, NULL_KEY);
     }
 }
 

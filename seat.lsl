@@ -30,6 +30,7 @@ integer MSG_BID_MADE         = 205;
 integer MSG_SEAT_OCCUPIED    = 403;
 integer MSG_SEAT_VACATED     = 404;
 
+integer MSG_DUMMY_REVEAL     = 401;
 integer MSG_BOT_BID_REQUEST  = 220;
 integer MSG_BOT_PLAY_REQUEST = 221;
 
@@ -229,12 +230,29 @@ default {
                     llMessageLinked(LINK_SET, MSG_BOT_BID_REQUEST, (string)gSeatID, NULL_KEY);
             }
 
+        } else if (num == MSG_DUMMY_REVEAL) {
+            // str = "dummySeat|c0|c1|..."
+            // Declarer is dummy's partner: (dummySeat + 2) % 4
+            integer dummySeat = (integer)llList2String(
+                llParseString2List(str, ["|"], []), 0);
+            if (gIsHuman && gSeatID == (dummySeat + 2) % 4) {
+                llRegionSayTo(gAvatarKey, listenChannel(), "DUMMY_HAND|" + str);
+            }
+
         } else if (num == MSG_PLAY_REQUEST) {
-            if ((integer)str == gSeatID) {
-                if (gIsHuman)
-                    llRegionSayTo(gAvatarKey, listenChannel(), "PLAY_PROMPT");
-                else
-                    llMessageLinked(LINK_SET, MSG_BOT_PLAY_REQUEST, (string)gSeatID, NULL_KEY);
+            list parts    = llParseString2List(str, ["|"], []);
+            integer seat  = (integer)llList2String(parts, 0);
+            integer forDummy = (integer)llList2String(parts, 1);
+            if (seat == gSeatID) {
+                if (gIsHuman) {
+                    llRegionSayTo(gAvatarKey, listenChannel(),
+                        "PLAY_PROMPT|" + (string)forDummy);
+                } else {
+                    string botStr = (string)gSeatID;
+                    if (forDummy)
+                        botStr += "|" + (string)((gSeatID + 2) % 4);
+                    llMessageLinked(LINK_SET, MSG_BOT_PLAY_REQUEST, botStr, NULL_KEY);
+                }
             }
         }
     }

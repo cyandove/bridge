@@ -566,11 +566,15 @@ default {
                 (string)seat + "|" + (string)bid, NULL_KEY);
 
         } else if (num == MSG_BOT_PLAY_REQUEST) {
-            integer seat = (integer)str;
-            integer card = decidePlay(seat);
+            // str = "seat" normally, or "seat|dummySeat" when playing for dummy
+            list parts    = llParseString2List(str, ["|"], []);
+            integer seat  = (integer)llList2String(parts, 0);
+            integer cardSeat = seat;
+            if (llGetListLength(parts) > 1)
+                cardSeat = (integer)llList2String(parts, 1);
+            integer card = decidePlay(cardSeat);
             if (card == -1) {
-                // No cards left — shouldn't happen; pass a safe fallback
-                list hand = liveCards(seat);
+                list hand = liveCards(cardSeat);
                 if (llGetListLength(hand) > 0)
                     card = llList2Integer(hand, 0);
             }
