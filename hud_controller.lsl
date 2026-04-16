@@ -233,6 +233,9 @@ default {
             gSelectMode = FALSE;
             llSetText("Bridge HUD\nSit to connect", <0.5,0.5,0.5>, 1.0);
             openHandshake();
+            // Announce to seat in case avatar is already sitting
+            llRegionSay(HUD_HANDSHAKE_CHANNEL,
+                "HUD_READY|" + (string)llGetOwner());
         } else {
             // Detached — clean up listens
             if (gHandshakeHandle != -1) {

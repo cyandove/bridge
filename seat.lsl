@@ -50,10 +50,11 @@ integer listenChannel() {
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
-key     gAvatarKey    = NULL_KEY;
-string  gAvatarName   = "";
-integer gListenHandle = -1;
-integer gIsHuman      = FALSE;
+key     gAvatarKey        = NULL_KEY;
+string  gAvatarName       = "";
+integer gListenHandle     = -1;
+integer gHandshakeHandle  = -1;
+integer gIsHuman          = FALSE;
 
 string gHandStr = "";
 
@@ -93,6 +94,10 @@ onSit(key avatarKey) {
     if (gListenHandle != -1) llListenRemove(gListenHandle);
     gListenHandle = llListen(listenChannel(), "", avatarKey, "");
 
+    // Listen for HUD_READY in case avatar attaches HUD after sitting
+    if (gHandshakeHandle != -1) llListenRemove(gHandshakeHandle);
+    gHandshakeHandle = llListen(HUD_HANDSHAKE_CHANNEL, "", NULL_KEY, "");
+
     // Push seat ID to HUD via the handshake channel
     // llRegionSayTo reaches worn attachments on the named avatar
     llRegionSayTo(avatarKey, HUD_HANDSHAKE_CHANNEL, "SEAT|" + (string)SEAT_ID);
@@ -119,6 +124,10 @@ onUnsit() {
         llListenRemove(gListenHandle);
         gListenHandle = -1;
     }
+    if (gHandshakeHandle != -1) {
+        llListenRemove(gHandshakeHandle);
+        gHandshakeHandle = -1;
+    }
 
     updateNameTag();
 
@@ -133,7 +142,9 @@ default {
     state_entry() {
         gIsHuman = FALSE;
         updateNameTag();
-        llSitTarget(<0,0,0.5>, ZERO_ROTATION);
+        // Basic Chair
+        // <0.7, 0.0, -0.05>, <0.00000, 0.08716, 0.00000, 0.99619>
+        llSitTarget(<0.7, 0.0, -0.05>, <0.00000, 0.08716, 0.00000, 0.99619>);
     }
 
     changed(integer change) {
@@ -148,6 +159,16 @@ default {
     }
 
     listen(integer channel, string name, key id, string message) {
+        if (channel == HUD_HANDSHAKE_CHANNEL) {
+            list parts = llParseString2List(message, ["|"], []);
+            if (llList2String(parts, 0) == "HUD_READY"
+                    && (key)llList2String(parts, 1) == gAvatarKey) {
+                llRegionSayTo(gAvatarKey, HUD_HANDSHAKE_CHANNEL,
+                    "SEAT|" + (string)SEAT_ID);
+            }
+            return;
+        }
+
         if (channel == listenChannel() && id == gAvatarKey) {
             list parts = llParseString2List(message, ["|"], []);
             string msgType = llList2String(parts, 0);
