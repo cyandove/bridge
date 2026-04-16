@@ -9,7 +9,7 @@ Technical guide for building and deploying the Bridge table in Second Life.
 | Object | Contains |
 |---|---|
 | **Bridge Table** (root prim + linked seat prims) | All engine scripts, seat scripts, card display |
-| **Bridge HUD** (separate object, worn by players) | `hud_controller.lsl` + `HUD_CONFIG` notecard |
+| **Bridge HUD** (separate object, worn by players) | `hud_controller.lsl` |
 
 All engine scripts communicate via `llMessageLinked` and must be inside the **same linked object**.
 
@@ -46,26 +46,21 @@ In Second Life, open the root prim's inventory (Edit → Contents) and drag each
 
 ## Step 3 — Configure and Add Seat Scripts
 
-`seat.lsl` is a template. You need **four copies**, one per seat, each with a different `SEAT_ID`.
+`seat.lsl` is identical for all four seats — no editing required. Each seat prim is configured via a notecard named `seat_config` placed in that prim's inventory.
 
 For each seat prim:
 
-1. Open `seat.lsl` in a text editor
-2. Change the line at the top:
-   ```lsl
-   integer SEAT_ID = 0;  // 0=North 1=South 2=East 3=West
-   ```
-3. Save the file with a distinct name (e.g. `seat_north.lsl`, `seat_south.lsl`, etc.)
-4. Open the corresponding seat prim's inventory and add the script
+1. Open the corresponding seat prim's inventory and add `seat.lsl`
+2. From the `notecards/` folder, drag the matching `seat_config.txt` into the prim's inventory and rename it to `seat_config`
 
-Seat ID assignments:
+| Seat | Notecard file | `seat` value |
+|---|---|---|
+| North | `notecards/North/seat_config.txt` | 0 |
+| South | `notecards/South/seat_config.txt` | 1 |
+| East  | `notecards/East/seat_config.txt`  | 2 |
+| West  | `notecards/West/seat_config.txt`  | 3 |
 
-| Seat | SEAT_ID |
-|---|---|
-| North | 0 |
-| South | 1 |
-| East | 2 |
-| West | 3 |
+If the script shows `(no seat_config)` in floating text, the notecard is missing or misnamed.
 
 ---
 
@@ -77,9 +72,7 @@ Create a single HUD object to be worn as a HUD attachment. You only need **one H
 2. Name the object `Bridge HUD`
 3. Place it in the **table root prim's inventory** — `seat.lsl` calls `llGiveInventory` when a player sits
 
-No notecard is needed. When the avatar sits, the seat script sends `SEAT|N` to the HUD via `llRegionSayTo` on a fixed handshake channel (`-7769`). The HUD stores the seat ID and opens the correct private channel automatically.
-
-The `notecards/` folder in this repo is no longer needed.
+No notecard is needed in the HUD itself. When the avatar sits (or attaches the HUD while already seated), the seat script sends `SEAT|N` to the HUD via `llRegionSayTo` on a fixed handshake channel (`-7769`). The HUD stores the seat ID and opens the correct private channel automatically.
 
 ---
 
@@ -163,7 +156,7 @@ These are hardcoded in `seat.lsl` as `-7770 - SEAT_ID`. Change both `seat.lsl` a
 
 - [ ] Table object built with root prim + 4 seat prims, all linked
 - [ ] 7 engine scripts in root prim inventory
-- [ ] 4 seat scripts (SEAT_ID 0–3) in corresponding seat prim inventories
+- [ ] `seat.lsl` + correct `seat_config` notecard in each of the 4 seat prim inventories
 - [ ] 1 HUD object built with `hud_controller.lsl`, named `Bridge HUD`
 - [ ] HUD object placed in root prim inventory
 - [ ] Table object permissions set appropriately

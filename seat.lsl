@@ -1,6 +1,7 @@
 // seat.lsl
-// Template script for a seat prim (North / South / East / West).
-// One copy per seat prim; set SEAT_ID via the integer at the top.
+// Seat prim script — identical copy goes in all four seat prims.
+// Put a notecard named "seat_config" in each prim containing one line:
+//   seat=0   (0=North  1=South  2=East  3=West)
 //
 // Responsibilities:
 //   - Detect avatar sit / unsit events
@@ -11,23 +12,14 @@
 //   - When seat is vacant, forward BID_REQUEST / PLAY_REQUEST to bot_ai
 
 // ---------------------------------------------------------------------------
-// CONFIGURE THIS PER SEAT PRIM
-// 0=North 1=South 2=East 3=West
+// Constants
 // ---------------------------------------------------------------------------
-integer SEAT_ID = 0;
-
-// Bot display names per seat
-list BOT_NAMES = ["North Bot", "South Bot", "East Bot", "West Bot"];
-
-// HUD object name in table inventory (single object, no per-seat variants)
-string HUD_OBJECT = "Bridge HUD";
-
-// Handshake channel — fixed, matches hud_controller.lsl
+string  NOTECARD       = "seat_config";
+list    BOT_NAMES      = ["North Bot", "South Bot", "East Bot", "West Bot"];
+string  HUD_OBJECT     = "Bridge HUD";
 integer HUD_HANDSHAKE_CHANNEL = -7769;
 
-// ---------------------------------------------------------------------------
 // Message constants (must match game_controller.lsl)
-// ---------------------------------------------------------------------------
 integer MSG_BID_REQUEST      = 200;
 integer MSG_PLAY_REQUEST     = 201;
 integer MSG_HAND_UPDATE      = 202;
@@ -36,47 +28,60 @@ integer MSG_PLAY_RESPONSE    = 301;
 integer MSG_SEAT_OCCUPIED    = 403;
 integer MSG_SEAT_VACATED     = 404;
 
-// bot_ai forward targets
 integer MSG_BOT_BID_REQUEST  = 220;
 integer MSG_BOT_PLAY_REQUEST = 221;
 
 // ---------------------------------------------------------------------------
-// Private listen channel for this seat's HUD
-// ---------------------------------------------------------------------------
-integer listenChannel() {
-    return -7770 - SEAT_ID;
-}
-
-// ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
+integer gSeatID           = -1;
+
 key     gAvatarKey        = NULL_KEY;
 string  gAvatarName       = "";
 integer gListenHandle     = -1;
 integer gHandshakeHandle  = -1;
 integer gIsHuman          = FALSE;
+string  gHandStr          = "";
 
-string gHandStr = "";
+key     gNotecardQuery    = NULL_KEY;
 
 // ---------------------------------------------------------------------------
-// Floating text
+// Helpers
 // ---------------------------------------------------------------------------
+integer listenChannel() { return -7770 - gSeatID; }
+
 updateNameTag() {
-    string direction;
-    if (SEAT_ID == 0)      direction = "North";
-    else if (SEAT_ID == 1) direction = "South";
-    else if (SEAT_ID == 2) direction = "East";
-    else                   direction = "West";
-
+    if (gSeatID == -1) {
+        llSetText("(no seat_config)", <1,0.3,0.3>, 1.0);
+        return;
+    }
+    list dirs = ["North","South","East","West"];
+    string direction = llList2String(dirs, gSeatID);
     if (gIsHuman) {
         llSetText(direction + "\n" + gAvatarName, <1,1,1>, 1.0);
     } else {
-        llSetText(direction + "\n" + llList2String(BOT_NAMES, SEAT_ID), <0.6,0.6,0.6>, 0.8);
+        llSetText(direction + "\n" + llList2String(BOT_NAMES, gSeatID), <0.6,0.6,0.6>, 0.8);
     }
 }
 
 // ---------------------------------------------------------------------------
-// Sit handler
+// Notecard loading
+// ---------------------------------------------------------------------------
+loadNotecard() {
+    if (llGetInventoryType(NOTECARD) != INVENTORY_NOTECARD) {
+        llOwnerSay("[seat] notecard '" + NOTECARD + "' not found");
+        return;
+    }
+    gNotecardQuery = llGetNotecardLine(NOTECARD, 0);
+}
+
+afterConfigLoaded() {
+    llSitTarget(<0.7, 0.0, -0.05>, <0.00000, 0.08716, 0.00000, 0.99619>);
+    updateNameTag();
+}
+
+// ---------------------------------------------------------------------------
+// Sit / unsit handlers
 // ---------------------------------------------------------------------------
 onSit(key avatarKey) {
     gAvatarKey  = avatarKey;
@@ -85,54 +90,34 @@ onSit(key avatarKey) {
 
     updateNameTag();
 
-    // Give HUD if not already in avatar's inventory
-    if (llGetInventoryType(HUD_OBJECT) == INVENTORY_OBJECT) {
+    if (llGetInventoryType(HUD_OBJECT) == INVENTORY_OBJECT)
         llGiveInventory(avatarKey, HUD_OBJECT);
-    }
 
-    // Open private listen for this seat
     if (gListenHandle != -1) llListenRemove(gListenHandle);
     gListenHandle = llListen(listenChannel(), "", avatarKey, "");
 
-    // Listen for HUD_READY in case avatar attaches HUD after sitting
     if (gHandshakeHandle != -1) llListenRemove(gHandshakeHandle);
     gHandshakeHandle = llListen(HUD_HANDSHAKE_CHANNEL, "", NULL_KEY, "");
 
-    // Push seat ID to HUD via the handshake channel
-    // llRegionSayTo reaches worn attachments on the named avatar
-    llRegionSayTo(avatarKey, HUD_HANDSHAKE_CHANNEL, "SEAT|" + (string)SEAT_ID);
+    llRegionSayTo(avatarKey, HUD_HANDSHAKE_CHANNEL, "SEAT|" + (string)gSeatID);
 
-    // Notify the rest of the table
     llMessageLinked(LINK_SET, MSG_SEAT_OCCUPIED,
-        (string)SEAT_ID + "|" + gAvatarName, NULL_KEY);
+        (string)gSeatID + "|" + gAvatarName, NULL_KEY);
 
-    // Send current hand to HUD if a deal is already in progress
-    if (gHandStr != "") {
+    if (gHandStr != "")
         llRegionSayTo(avatarKey, listenChannel(), "HAND|" + gHandStr);
-    }
 }
 
-// ---------------------------------------------------------------------------
-// Unsit handler
-// ---------------------------------------------------------------------------
 onUnsit() {
     gIsHuman    = FALSE;
     gAvatarKey  = NULL_KEY;
     gAvatarName = "";
 
-    if (gListenHandle != -1) {
-        llListenRemove(gListenHandle);
-        gListenHandle = -1;
-    }
-    if (gHandshakeHandle != -1) {
-        llListenRemove(gHandshakeHandle);
-        gHandshakeHandle = -1;
-    }
+    if (gListenHandle != -1)    { llListenRemove(gListenHandle);    gListenHandle    = -1; }
+    if (gHandshakeHandle != -1) { llListenRemove(gHandshakeHandle); gHandshakeHandle = -1; }
 
     updateNameTag();
-
-    // Notify table — bot takes over
-    llMessageLinked(LINK_SET, MSG_SEAT_VACATED, (string)SEAT_ID, NULL_KEY);
+    llMessageLinked(LINK_SET, MSG_SEAT_VACATED, (string)gSeatID, NULL_KEY);
 }
 
 // ---------------------------------------------------------------------------
@@ -140,14 +125,36 @@ onUnsit() {
 // ---------------------------------------------------------------------------
 default {
     state_entry() {
+        gSeatID  = -1;
         gIsHuman = FALSE;
-        updateNameTag();
-        // Basic Chair
-        // <0.7, 0.0, -0.05>, <0.00000, 0.08716, 0.00000, 0.99619>
-        llSitTarget(<0.7, 0.0, -0.05>, <0.00000, 0.08716, 0.00000, 0.99619>);
+        llSetText("Loading...", <0.5,0.5,0.5>, 1.0);
+        loadNotecard();
+    }
+
+    dataserver(key query_id, string data) {
+        if (query_id != gNotecardQuery) return;
+        if (data == EOF) { afterConfigLoaded(); return; }
+
+        // Ignore blank lines and comments
+        if (data == "" || llGetSubString(data, 0, 0) == "#") {
+            gNotecardQuery = llGetNotecardLine(NOTECARD, 1);
+            return;
+        }
+
+        integer eq = llSubStringIndex(data, "=");
+        if (eq != -1) {
+            string key_name = llToLower(llGetSubString(data, 0, eq - 1));
+            string val      = llGetSubString(data, eq + 1, -1);
+            if (key_name == "seat") gSeatID = (integer)val;
+        }
+        // Only one config line expected; after reading it, signal done
+        afterConfigLoaded();
     }
 
     changed(integer change) {
+        if (change & CHANGED_INVENTORY) {
+            llResetScript();
+        }
         if (change & CHANGED_LINK) {
             key sitter = llAvatarOnSitTarget();
             if (sitter != NULL_KEY && sitter != gAvatarKey) {
@@ -164,7 +171,7 @@ default {
             if (llList2String(parts, 0) == "HUD_READY"
                     && (key)llList2String(parts, 1) == gAvatarKey) {
                 llRegionSayTo(gAvatarKey, HUD_HANDSHAKE_CHANNEL,
-                    "SEAT|" + (string)SEAT_ID);
+                    "SEAT|" + (string)gSeatID);
             }
             return;
         }
@@ -174,49 +181,39 @@ default {
             string msgType = llList2String(parts, 0);
 
             if (msgType == "BID") {
-                string bid = llList2String(parts, 1);
                 llMessageLinked(LINK_SET, MSG_BID_RESPONSE,
-                    (string)SEAT_ID + "|" + bid, NULL_KEY);
-
+                    (string)gSeatID + "|" + llList2String(parts, 1), NULL_KEY);
             } else if (msgType == "PLAY") {
-                string card = llList2String(parts, 1);
                 llMessageLinked(LINK_SET, MSG_PLAY_RESPONSE,
-                    (string)SEAT_ID + "|" + card, NULL_KEY);
+                    (string)gSeatID + "|" + llList2String(parts, 1), NULL_KEY);
             }
         }
     }
 
     link_message(integer sender, integer num, string str, key id) {
         if (num == MSG_HAND_UPDATE) {
-            list parts = llParseString2List(str, ["|"], []);
-            integer targetSeat = (integer)llList2String(parts, 0);
-            if (targetSeat == SEAT_ID) {
+            integer targetSeat = (integer)llList2String(
+                llParseString2List(str, ["|"], []), 0);
+            if (targetSeat == gSeatID) {
                 gHandStr = str;
-                if (gIsHuman) {
+                if (gIsHuman)
                     llRegionSayTo(gAvatarKey, listenChannel(), "HAND|" + str);
-                }
             }
 
         } else if (num == MSG_BID_REQUEST) {
-            integer targetSeat = (integer)str;
-            if (targetSeat == SEAT_ID) {
-                if (gIsHuman) {
+            if ((integer)str == gSeatID) {
+                if (gIsHuman)
                     llRegionSayTo(gAvatarKey, listenChannel(), "BID_PROMPT");
-                } else {
-                    llMessageLinked(LINK_SET, MSG_BOT_BID_REQUEST,
-                        (string)SEAT_ID, NULL_KEY);
-                }
+                else
+                    llMessageLinked(LINK_SET, MSG_BOT_BID_REQUEST, (string)gSeatID, NULL_KEY);
             }
 
         } else if (num == MSG_PLAY_REQUEST) {
-            integer targetSeat = (integer)str;
-            if (targetSeat == SEAT_ID) {
-                if (gIsHuman) {
+            if ((integer)str == gSeatID) {
+                if (gIsHuman)
                     llRegionSayTo(gAvatarKey, listenChannel(), "PLAY_PROMPT");
-                } else {
-                    llMessageLinked(LINK_SET, MSG_BOT_PLAY_REQUEST,
-                        (string)SEAT_ID, NULL_KEY);
-                }
+                else
+                    llMessageLinked(LINK_SET, MSG_BOT_PLAY_REQUEST, (string)gSeatID, NULL_KEY);
             }
         }
     }
