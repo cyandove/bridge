@@ -81,9 +81,6 @@ list gVulnerable = [0, 0];
 // Games won this rubber per side: index 0=NS 1=EW
 list gGamesWon = [0, 0];
 
-// Turn timeout (seconds) — bot responds immediately; human gets this long
-integer TURN_TIMEOUT = 60;
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -142,7 +139,6 @@ startBidding() {
     llMessageLinked(LINK_SET, MSG_BIDDING_START,
         (string)gDealer + "|" + (string)gCurrentSeat, NULL_KEY);
     requestBid(gCurrentSeat);
-    llSetTimerEvent(TURN_TIMEOUT);
 }
 
 requestBid(integer seat) {
@@ -167,7 +163,6 @@ contractSet(string str) {
     llMessageLinked(LINK_SET, MSG_PLAY_START,
         str + "|" + (string)gCurrentSeat, NULL_KEY);
     requestPlay(gCurrentSeat);
-    llSetTimerEvent(TURN_TIMEOUT);
 }
 
 requestPlay(integer seat) {
@@ -191,7 +186,6 @@ trickDone(string str) {
         llSetText("Playing\nLead: " + seatName(winner)
             + "\nTricks: " + (string)gTrickCount, <0,1,0.5>, 1.0);
         requestPlay(winner);
-        llSetTimerEvent(TURN_TIMEOUT);
     }
 }
 
@@ -229,19 +223,6 @@ advanceBid(integer nextSeat) {
     gCurrentSeat = nextSeat;
     llSetText("Bidding\n" + seatName(gCurrentSeat) + "'s turn", <0.5,0.8,1>, 1.0);
     requestBid(gCurrentSeat);
-    llSetTimerEvent(TURN_TIMEOUT);
-}
-
-// ---------------------------------------------------------------------------
-// Turn timeout — bot plays for a human who ran out of time
-// ---------------------------------------------------------------------------
-handleTimeout() {
-    if (gState == STATE_BIDDING || gState == STATE_PLAYING) {
-        llSay(0, seatName(gCurrentSeat) + " timed out — bot takes over.");
-        // Signal seat to hand off to bot
-        llMessageLinked(LINK_SET, MSG_SEAT_VACATED, (string)gCurrentSeat, NULL_KEY);
-        // bot_ai will respond with appropriate BID/PLAY response
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -269,8 +250,6 @@ default {
         if (gState == STATE_WAITING) {
             llSetTimerEvent(0);
             startDealing();
-        } else if (gState == STATE_BIDDING || gState == STATE_PLAYING) {
-            handleTimeout();
         } else if (gState == STATE_IDLE) {
             // Post-rubber pause expired
             llSetTimerEvent(0);
