@@ -19,6 +19,7 @@ integer MSG_CONTRACT_SET  = 103;
 integer MSG_BID_REQUEST   = 200;
 integer MSG_BID_ADVANCE   = 203;
 integer MSG_BID_INVALID   = 204;
+integer MSG_BID_MADE      = 205;
 integer MSG_BID_RESPONSE  = 300;
 
 // ---------------------------------------------------------------------------
@@ -221,9 +222,17 @@ processBid(integer seat, integer bid) {
         recordFirstBidder(seat, bid);
     }
 
-    // Advance to next bidder
+    // Notify all prims of the bid (used by seat scripts for floating text)
+    llMessageLinked(LINK_SET, MSG_BID_MADE,
+        (string)seat + "|" + bidStr(bid), NULL_KEY);
+
+    // Advance to next bidder, carrying auction state for HUD filtering
     gCurrentBidder = leftOf(seat);
-    llMessageLinked(LINK_SET, MSG_BID_ADVANCE, (string)gCurrentBidder, NULL_KEY);
+    integer hp = -1; if (gHighBidder != -1) hp = partnership(gHighBidder);
+    integer dp = -1; if (gDoubler   != -1) dp = partnership(gDoubler);
+    llMessageLinked(LINK_SET, MSG_BID_ADVANCE,
+        (string)gCurrentBidder + "|" + (string)gHighBid + "|"
+        + (string)gDoubled + "|" + (string)hp + "|" + (string)dp, NULL_KEY);
 }
 
 // ---------------------------------------------------------------------------

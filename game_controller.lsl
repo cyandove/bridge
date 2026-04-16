@@ -138,12 +138,8 @@ startBidding() {
     llSetText("Bidding\n" + seatName(gCurrentSeat) + "'s turn", <0.5,0.8,1>, 1.0);
     llMessageLinked(LINK_SET, MSG_BIDDING_START,
         (string)gDealer + "|" + (string)gCurrentSeat, NULL_KEY);
-    requestBid(gCurrentSeat);
-}
-
-requestBid(integer seat) {
-    // bidding_engine constructs the full auction string; we just signal whose turn
-    llMessageLinked(LINK_SET, MSG_BID_REQUEST, (string)seat, NULL_KEY);
+    llMessageLinked(LINK_SET, MSG_BID_REQUEST,
+        (string)gCurrentSeat + "|0|0|-1|-1", NULL_KEY);
 }
 
 // Called by bidding_engine via MSG_CONTRACT_SET
@@ -219,10 +215,10 @@ scoreUpdate(string str) {
 // ---------------------------------------------------------------------------
 integer MSG_BID_ADVANCE = 203;
 
-advanceBid(integer nextSeat) {
-    gCurrentSeat = nextSeat;
+advanceBid(string str) {
+    gCurrentSeat = (integer)llList2String(llParseString2List(str, ["|"], []), 0);
     llSetText("Bidding\n" + seatName(gCurrentSeat) + "'s turn", <0.5,0.8,1>, 1.0);
-    requestBid(gCurrentSeat);
+    llMessageLinked(LINK_SET, MSG_BID_REQUEST, str, NULL_KEY);
 }
 
 // ---------------------------------------------------------------------------
@@ -264,7 +260,7 @@ default {
 
         // Bidding engine signals next bidder
         } else if (num == MSG_BID_ADVANCE) {
-            advanceBid((integer)str);
+            advanceBid(str);
 
         // Bidding engine signals contract finalised
         } else if (num == MSG_CONTRACT_SET) {

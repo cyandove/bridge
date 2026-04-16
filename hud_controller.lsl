@@ -37,6 +37,12 @@ integer gBidMode       = FALSE;
 integer gBidPage       = 1;
 integer gCardPage      = 0;
 
+// Auction state for bid filtering (updated each time BID_PROMPT arrives)
+integer gHighBid     = 0;   // 0 = no bid yet; 5..39 otherwise
+integer gDoubled     = 0;   // 0=none 1=doubled 2=redoubled
+integer gHighSide    = -1;  // partnership(high bidder): 0=NS 1=EW -1=none
+integer gDoublerSide = -1;  // partnership(doubler):     0=NS 1=EW -1=none
+
 // Bid encoding matches bidding_engine.lsl
 integer BID_PASS     = 0;
 integer BID_DOUBLE   = 1;
@@ -109,20 +115,45 @@ updateHandDisplay() {
 // Bidding dialog
 // One level per page (5 suit buttons + Pass + Dbl + Rdbl + Prev/Next = 9-10)
 // ---------------------------------------------------------------------------
+integer minBidLevel() {
+    integer m = (gHighBid + 1) / 5;
+    if (m < 1) m = 1;
+    if (m > 7) m = 7;
+    return m;
+}
+
 list buildBidPage(integer level) {
+    integer myPartnership = gSeatID / 2;
     list buttons = [];
-    list suitLabels = ["C","D","H","S","N"];
-    integer suit;
-    for (suit = 0; suit < 5; suit++) {
-        buttons += [(string)level + llList2String(suitLabels, suit)];
+
+    // Suits high-to-low: NT S H D C
+    list suitLabels  = ["N", "S", "H", "D", "C"];
+    list suitIndices = [4,    3,   2,   1,   0];
+    integer i;
+    for (i = 0; i < 5; i++) {
+        integer bid = level * 5 + llList2Integer(suitIndices, i);
+        if (bid > gHighBid)
+            buttons += [(string)level + llList2String(suitLabels, i)];
     }
-    buttons += ["Pass", "Dbl", "Rdbl"];
-    if (level > 1) buttons += ["<< Prev"];
-    if (level < 7) buttons += ["Next >>"];
+
+    buttons += ["Pass"];
+
+    if (gHighBid > 0 && gDoubled == 0 && gHighSide != -1 && gHighSide != myPartnership)
+        buttons += ["Dbl"];
+
+    if (gDoubled == 1 && gDoublerSide != -1 && gDoublerSide != myPartnership)
+        buttons += ["Rdbl"];
+
+    integer minLevel = minBidLevel();
+    if (level > minLevel) buttons += ["<< Prev"];
+    if (level < 7)        buttons += ["Next >>"];
     return buttons;
 }
 
 showBidDialog(integer level) {
+    integer minLevel = minBidLevel();
+    if (level < minLevel) level = minLevel;
+    if (level > 7)        level = 7;
     gBidPage = level;
     list buttons = buildBidPage(level);
     llDialog(llGetOwner(), "Your bid (Level " + (string)level + "):", buttons, gChannel);
@@ -195,8 +226,12 @@ openHandshake() {
 // Called once seat ID is known — switch to private channel
 // ---------------------------------------------------------------------------
 assignSeat(integer seatID) {
-    gSeatID  = seatID;
-    gChannel = -7770 - seatID;
+    gSeatID      = seatID;
+    gChannel     = -7770 - seatID;
+    gHighBid     = 0;
+    gDoubled     = 0;
+    gHighSide    = -1;
+    gDoublerSide = -1;
 
     // Close handshake, open private channel
     if (gHandshakeHandle != -1) {
@@ -276,11 +311,17 @@ default {
             return;
         }
 
-        if (message == "BID_PROMPT") {
+        if (llGetSubString(message, 0, 9) == "BID_PROMPT") {
+            // "BID_PROMPT|seat|high_bid|doubled|high_side|doubler_side"
+            list parts   = llParseString2List(message, ["|"], []);
+            gHighBid     = (integer)llList2String(parts, 2);
+            gDoubled     = (integer)llList2String(parts, 3);
+            gHighSide    = (integer)llList2String(parts, 4);
+            gDoublerSide = (integer)llList2String(parts, 5);
             gBidMode    = TRUE;
             gSelectMode = FALSE;
             updateHandDisplay();
-            showBidDialog(1);
+            showBidDialog(minBidLevel());
             return;
         }
 
@@ -301,9 +342,7 @@ default {
                 return;
             }
             if (message == "<< Prev") {
-                integer prevPage = gBidPage - 1;
-                if (prevPage < 1) prevPage = 1;
-                showBidDialog(prevPage);
+                showBidDialog(gBidPage - 1);
                 return;
             }
             integer bid = parseBidButton(message);

@@ -20,11 +20,13 @@ string  HUD_OBJECT     = "Bridge HUD";
 integer HUD_HANDSHAKE_CHANNEL = -7769;
 
 // Message constants (must match game_controller.lsl)
+integer MSG_BIDDING_START    = 102;
 integer MSG_BID_REQUEST      = 200;
 integer MSG_PLAY_REQUEST     = 201;
 integer MSG_HAND_UPDATE      = 202;
 integer MSG_BID_RESPONSE     = 300;
 integer MSG_PLAY_RESPONSE    = 301;
+integer MSG_BID_MADE         = 205;
 integer MSG_SEAT_OCCUPIED    = 403;
 integer MSG_SEAT_VACATED     = 404;
 
@@ -42,6 +44,7 @@ integer gListenHandle     = -1;
 integer gHandshakeHandle  = -1;
 integer gIsHuman          = FALSE;
 string  gHandStr          = "";
+string  gLastBid          = "";
 
 key     gNotecardQuery    = NULL_KEY;
 
@@ -57,10 +60,17 @@ updateNameTag() {
     }
     list dirs = ["North","South","East","West"];
     string direction = llList2String(dirs, gSeatID);
+    string label;
     if (gIsHuman) {
-        llSetText(direction + "\n" + gAvatarName, <1,1,1>, 1.0);
+        label = direction + "\n" + gAvatarName;
     } else {
-        llSetText(direction + "\n" + llList2String(BOT_NAMES, gSeatID), <0.6,0.6,0.6>, 0.8);
+        label = direction + "\n" + llList2String(BOT_NAMES, gSeatID);
+    }
+    if (gLastBid != "") label += "\n" + gLastBid;
+    if (gIsHuman) {
+        llSetText(label, <1,1,1>, 1.0);
+    } else {
+        llSetText(label, <0.6,0.6,0.6>, 0.8);
     }
 }
 
@@ -191,7 +201,18 @@ default {
     }
 
     link_message(integer sender, integer num, string str, key id) {
-        if (num == MSG_HAND_UPDATE) {
+        if (num == MSG_BIDDING_START) {
+            gLastBid = "";
+            updateNameTag();
+
+        } else if (num == MSG_BID_MADE) {
+            list parts = llParseString2List(str, ["|"], []);
+            if ((integer)llList2String(parts, 0) == gSeatID) {
+                gLastBid = llList2String(parts, 1);
+                updateNameTag();
+            }
+
+        } else if (num == MSG_HAND_UPDATE) {
             integer targetSeat = (integer)llList2String(
                 llParseString2List(str, ["|"], []), 0);
             if (targetSeat == gSeatID) {
@@ -201,9 +222,9 @@ default {
             }
 
         } else if (num == MSG_BID_REQUEST) {
-            if ((integer)str == gSeatID) {
+            if ((integer)llList2String(llParseString2List(str, ["|"], []), 0) == gSeatID) {
                 if (gIsHuman)
-                    llRegionSayTo(gAvatarKey, listenChannel(), "BID_PROMPT");
+                    llRegionSayTo(gAvatarKey, listenChannel(), "BID_PROMPT|" + str);
                 else
                     llMessageLinked(LINK_SET, MSG_BOT_BID_REQUEST, (string)gSeatID, NULL_KEY);
             }
