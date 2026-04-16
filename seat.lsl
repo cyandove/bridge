@@ -94,7 +94,7 @@ onSit(key avatarKey) {
         llGiveInventory(avatarKey, HUD_OBJECT);
 
     if (gListenHandle != -1) llListenRemove(gListenHandle);
-    gListenHandle = llListen(listenChannel(), "", avatarKey, "");
+    gListenHandle = llListen(listenChannel(), "", NULL_KEY, "");
 
     if (gHandshakeHandle != -1) llListenRemove(gHandshakeHandle);
     gHandshakeHandle = llListen(HUD_HANDSHAKE_CHANNEL, "", NULL_KEY, "");
@@ -176,7 +176,7 @@ default {
             return;
         }
 
-        if (channel == listenChannel() && id == gAvatarKey) {
+        if (channel == listenChannel()) {
             list parts = llParseString2List(message, ["|"], []);
             string msgType = llList2String(parts, 0);
 
