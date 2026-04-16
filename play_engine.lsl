@@ -203,12 +203,14 @@ acceptPlay(integer seat, integer card) {
         revealDummy();
     }
 
-    // If trick is complete (4 cards), finalise
+    // If trick is complete (4 cards), finalise; otherwise request next player
     if (llGetListLength(gTrick) == 8) {
         finaliseTrick();
+    } else {
+        integer nextSeat = currentTrickSeat();
+        if (nextSeat == gDummy) nextSeat = gDeclarer;
+        llMessageLinked(LINK_SET, MSG_PLAY_REQUEST, (string)nextSeat, NULL_KEY);
     }
-    // Otherwise game_controller will send next MSG_PLAY_REQUEST via MSG_TRICK_DONE
-    // or directly after this play
 }
 
 // ---------------------------------------------------------------------------
