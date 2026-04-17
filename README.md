@@ -17,10 +17,12 @@ This table plays **Rubber Bridge** — the classic social format. A rubber is wo
 
 ## Getting Started
 
-1. Approach the Bridge table and touch any of the four seat prims (North, South, East, West)
-2. A dialog will appear — confirm the seat you want
-3. You will automatically receive a **Bridge HUD** — attach it to your screen
-4. The game starts automatically once at least one player is seated (bots fill the remaining seats)
+1. Sit in any of the four seat prims (North, South, East, West)
+2. You will automatically receive a **Bridge HUD** — attach it to your screen
+3. Wait for any other human players to sit, then **touch the table** to start the deal
+4. Bots fill any empty seats automatically
+
+When the first player sits, the table announces in chat that it's ready to start. Touch it whenever your group is ready — there's no time limit.
 
 To leave mid-game, simply stand up. The bot for your seat will take over your hand.
 
@@ -28,18 +30,22 @@ To leave mid-game, simply stand up. The bot for your seat will take over your ha
 
 ## The HUD
 
-The HUD displays your private hand, sorted by suit:
+The HUD displays your private hand, sorted by suit (Spades first, Clubs last), with ranks listed high to low. Void suits show a dash:
 
 ```
-S: AKJT
-H: Q975
-D: 83
-C: KJ4
+Bridge HUD
+South
+
+S: A K J T
+H: Q 9 7 5
+D: 8 3
+C: -
 ```
 
 - **During bidding**: a dialog appears asking for your bid
 - **During play**: a dialog appears listing your legal cards to play
 - **Touch the HUD** at any time to re-open a dialog you may have missed
+- **Touch the table** during a hand to see the current phase, whose turn it is, tricks won, and score
 
 ---
 
@@ -49,14 +55,20 @@ The auction determines the contract — which suit is trump (or No Trump), how m
 
 ### How to bid
 
-When it is your turn, a dialog appears. Select your bid:
+When it is your turn, a dialog appears with a fixed 9-button grid:
 
-- **1C through 7NT** — a contract bid (level × suit)
-- **Pass** — decline to bid
-- **Dbl** — double the opponents' last bid (increases the stakes)
-- **Rdbl** — redouble after being doubled (increases stakes further)
+```
+[ levelC ] [ levelD ] [ levelH ]
+[ levelS ] [ levelN ] [  Pass  ]
+[ <<Prev ] [  Dbl   ] [ Next>> ]
+```
 
-Use **Next >>** and **<< Prev** to page through bid levels.
+- Suit and No Trump bids for the current level appear in the top two rows; invalid bids show **-**
+- **Pass** is always available
+- **Dbl** appears when you can legally double; **Rdbl** when you can redouble; otherwise **-**
+- **Next >>** / **<< Prev** move between levels; **-** when there is nowhere to go
+- Clicking **-** re-opens the same dialog
+- The dialog opens at the lowest level where at least one bid is legal
 
 ### Bid levels
 
@@ -91,11 +103,22 @@ The player to the **left of the declarer** makes the opening lead, face down. Al
 
 ### The dummy
 
-After the opening lead, the **declarer's partner** (the **dummy**) lays their entire hand face-up on the table. The declarer plays both their own hand and the dummy's hand for the rest of the deal. The dummy takes no further part in play.
+After the opening lead, the **declarer's partner** (the **dummy**) lays their entire hand face-up on the table. The dummy's cards are shown above their seat for all to see, and update as cards are played. The declarer plays both their own hand and the dummy's hand for the rest of the deal. The dummy takes no further part in play.
 
 ### Playing cards
 
-Play proceeds clockwise. When it is your turn, a dialog lists your playable cards. Select the card you wish to play.
+Play proceeds clockwise. When it is your turn, a dialog shows your hand organised by suit in a fixed grid:
+
+```
+[  S card  ] [  S card  ] [ Next >>  ]
+[  H card  ] [  H card  ] [    -     ]
+[  D card  ] [  D card  ] [    -     ]
+[  C card  ] [  C card  ] [ << Prev  ]
+```
+
+The title shows your complete hand so you always know how many cards remain in each suit. Each page shows up to 2 cards per suit; **Next >>** reveals more. Void suits or empty slots show **-** (clicking **-** re-opens the same dialog).
+
+When you are playing the **dummy's hand**, the dialog title reads *Play for Dummy* and shows dummy's remaining cards.
 
 **You must follow suit** if you hold a card of the suit led. If you have no cards of that suit, you may play any card — including a trump.
 
@@ -165,7 +188,20 @@ Any unoccupied seat is played by a bot. Bots are named **North Bot**, **South Bo
 
 Bots use a simplified Standard American bidding system based on high card points (HCP), and apply classic card play principles: second hand low, third hand high, lead fourth-best, ruff when void. They are reasonable opponents for casual play.
 
+Bots take a short pause before acting (roughly two-thirds of a second per turn, with a one-second pause between tricks) so the game does not fly by too fast.
+
 You can sit down mid-rubber to take over a bot's seat and cards at any time.
+
+---
+
+## Seat Hover Text
+
+Each seat prim shows a floating label above it:
+
+- **Direction & name** — North/South/East/West and the player's name (or bot name)
+- **Last bid** — shown during the auction; replaced by the contract on the declarer's seat and **Dummy** on the dummy's seat when play begins
+- **Dummy's hand** — the dummy's remaining cards are displayed live above the dummy seat
+- **Green highlight** — the seat whose turn it currently is glows green
 
 ---
 
@@ -175,6 +211,7 @@ You can sit down mid-rubber to take over a bot's seat and cards at any time.
 |---|---|
 | Sit | Touch a seat prim |
 | Receive HUD | Automatic on sit |
+| Start game | Touch the table after sitting |
+| Check game state | Touch the table during a hand |
 | Open bid/play dialog | Automatic on your turn; touch HUD to re-open |
 | Leave | Stand up (bot takes over) |
-| Re-start | Touch table when idle |
