@@ -1,0 +1,77 @@
+UI LAYOUT SAMPLES
+=================
+llDialog grids fill left-to-right, bottom-to-top (button[0] = bottom-left).
+Max 12 buttons per dialog. Columns are always 3.
+
+
+------------------------------------------------------------
+BIDDING DIALOG 
+------------------------------------------------------------
+
+  Title: "Your bid (Level 1):"
+
+  Row 2:  [   1C    ] [   1D   ] [   1H   ]
+  Row 1:  [   1S    ] [   1N   ] [  Pass  ]
+  Row 0:  [ << Prev ] [  Dbl   ] [ Next >>]
+
+Notes: Dbl can be Dbl, Rdbl, or -
+       `<< Prev` and `Next >>` show - if they aren't valid
+       `1C` `1D` etc show - if not valid. If nothing is valid for a level, don't show it.
+
+
+------------------------------------------------------------
+CARD PLAY DIALOG — 13 cards, no pagination needed (13 buttons → 5 rows)
+  Example hand: S:AKJ  H:QT9  D:8532  C:K74
+  Cards as integers, displayed as rank+suit strings
+------------------------------------------------------------
+
+  Title: """
+    Play a card:
+    S: A K J
+    H: Q T 9
+    D: 8 5 3 2
+    C: K 7 4
+  """
+
+
+
+  Row 3:  [  AS    ] [  KS    ] [ Next >>]
+  Row 2:  [  QH    ] [  TH    ] [   -    ]
+  Row 1:  [  8D    ] [  5D    ] [   -    ]
+  Row 0:  [  KC    ] [  7C    ] [ << Prev]
+
+Notes: Menus max at 12 buttons, 4 rows.
+       Menu title shows full hand. Void suits should show `-`
+       Menu buttons show cards organized by suit, S in top row, then H, then D, C in bottom row.
+       `Next >>` shows next batch (so, [ JS ] [ - ], etc)
+       `Next >>` and `<< Prev` show `-` if not valid.
+
+
+------------------------------------------------------------
+HAND DISPLAY — HUD floating text (not a dialog)
+  Suits ordered C D H S, ranks high-to-low within each suit
+------------------------------------------------------------
+
+  Bridge HUD
+  South
+
+  S: A K J
+  H: Q T 9
+  D: 8 5 3 2
+  C: K 7 4
+
+Make sure a void suit shows `-` instead of card ranks
+
+
+------------------------------------------------------------
+DUMMY HAND DISPLAY — same format, shown while playing for dummy
+------------------------------------------------------------
+
+  Bridge HUD
+  South
+  [PLAY FOR DUMMY - touch HUD]
+
+  S: A K J
+  H: Q T 9
+  D: 8 5 3 2
+  C: K 7 4
