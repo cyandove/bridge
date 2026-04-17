@@ -64,6 +64,7 @@ integer gCurrentSeat = 0;   // whose turn it is
 integer gTrickCount  = 0;   // tricks played this hand
 integer gTricksNS    = 0;
 integer gTricksEW    = 0;
+integer gPendingLead = -1;  // winner waiting for inter-trick delay
 integer gHandCount   = 0;   // hands played this rubber
 
 // Seat occupancy: 1=human present, 0=bot
@@ -129,9 +130,10 @@ startWaiting() {
 
 startDealing() {
     gState = STATE_DEALING;
-    gTrickCount = 0;
-    gTricksNS   = 0;
-    gTricksEW   = 0;
+    gTrickCount  = 0;
+    gTricksNS    = 0;
+    gTricksEW    = 0;
+    gPendingLead = -1;
     llSetText("Dealing...", <1,1,0>, 1.0);
     llMessageLinked(LINK_SET, MSG_GAME_START, "", NULL_KEY);
     // deck_manager will respond with MSG_DEAL_DONE
@@ -193,7 +195,8 @@ trickDone(string str) {
     } else {
         llSetText("Playing\nLead: " + seatName(winner)
             + "\nTricks: " + (string)gTrickCount, <0,1,0.5>, 1.0);
-        requestPlay(winner);
+        gPendingLead = winner;
+        llSetTimerEvent(1.0);
     }
 }
 
@@ -295,9 +298,12 @@ default {
     }
 
     timer() {
-        // Post-rubber pause expired — auto-restart
-        if (gState == STATE_WAITING) {
-            llSetTimerEvent(0);
+        llSetTimerEvent(0);
+        if (gState == STATE_PLAYING && gPendingLead != -1) {
+            integer lead = gPendingLead;
+            gPendingLead = -1;
+            requestPlay(lead);
+        } else if (gState == STATE_WAITING) {
             startDealing();
         }
     }

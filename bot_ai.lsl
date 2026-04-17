@@ -80,6 +80,11 @@ integer bidSuit(integer bid)  { return bid % 5; }
 // ---------------------------------------------------------------------------
 list gHands = [];   // flat list: 52 entries; gHands[seat*13 + i] = card or -1
 
+// Pending delayed response
+integer gPendingType     = 0;   // 0=none 1=bid 2=play
+integer gPendingSeat     = -1;
+integer gPendingCardSeat = -1;  // card seat (differs from gPendingSeat when dummy)
+
 // Returns hand list for seat (13-element list, may contain -1 for played cards)
 list getHand(integer seat) {
     return llList2List(gHands, seat * 13, seat * 13 + 12);
@@ -560,26 +565,41 @@ default {
             gLedSuit = -1;
 
         } else if (num == MSG_BOT_BID_REQUEST) {
-            integer seat = (integer)str;
-            integer bid  = decideBid(seat);
-            llMessageLinked(LINK_SET, MSG_BID_RESPONSE,
-                (string)seat + "|" + (string)bid, NULL_KEY);
+            gPendingType     = 1;
+            gPendingSeat     = (integer)str;
+            gPendingCardSeat = -1;
+            llSetTimerEvent(0.667);
 
         } else if (num == MSG_BOT_PLAY_REQUEST) {
             // str = "seat" normally, or "seat|dummySeat" when playing for dummy
-            list parts    = llParseString2List(str, ["|"], []);
-            integer seat  = (integer)llList2String(parts, 0);
-            integer cardSeat = seat;
+            list parts = llParseString2List(str, ["|"], []);
+            gPendingType     = 2;
+            gPendingSeat     = (integer)llList2String(parts, 0);
+            gPendingCardSeat = gPendingSeat;
             if (llGetListLength(parts) > 1)
-                cardSeat = (integer)llList2String(parts, 1);
-            integer card = decidePlay(cardSeat);
+                gPendingCardSeat = (integer)llList2String(parts, 1);
+            llSetTimerEvent(0.667);
+        }
+    }
+
+    timer() {
+        llSetTimerEvent(0);
+        if (gPendingType == 1) {
+            integer bid = decideBid(gPendingSeat);
+            llMessageLinked(LINK_SET, MSG_BID_RESPONSE,
+                (string)gPendingSeat + "|" + (string)bid, NULL_KEY);
+        } else if (gPendingType == 2) {
+            integer card = decidePlay(gPendingCardSeat);
             if (card == -1) {
-                list hand = liveCards(cardSeat);
+                list hand = liveCards(gPendingCardSeat);
                 if (llGetListLength(hand) > 0)
                     card = llList2Integer(hand, 0);
             }
             llMessageLinked(LINK_SET, MSG_PLAY_RESPONSE,
-                (string)seat + "|" + (string)card, NULL_KEY);
+                (string)gPendingSeat + "|" + (string)card, NULL_KEY);
         }
+        gPendingType     = 0;
+        gPendingSeat     = -1;
+        gPendingCardSeat = -1;
     }
 }
