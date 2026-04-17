@@ -178,8 +178,13 @@ processBid(integer seat, integer bid) {
     if (err != "") {
         llMessageLinked(LINK_SET, MSG_BID_INVALID,
             (string)seat + "|" + err, NULL_KEY);
-        // Re-request bid from same seat
-        llMessageLinked(LINK_SET, MSG_BID_REQUEST, (string)seat, NULL_KEY);
+        // Re-request bid from same seat — must carry full auction state so HUD
+        // doesn't reset gHighBid to 0 by parsing an empty field.
+        integer hp = -1; if (gHighBidder != -1) hp = partnership(gHighBidder);
+        integer dp = -1; if (gDoubler   != -1) dp = partnership(gDoubler);
+        llMessageLinked(LINK_SET, MSG_BID_REQUEST,
+            (string)seat + "|" + (string)gHighBid + "|" + (string)gDoubled
+            + "|" + (string)hp + "|" + (string)dp, NULL_KEY);
         return;
     }
 
