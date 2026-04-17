@@ -233,7 +233,9 @@ showCardDialog(integer page) {
     // button[0]=bottom-left → button[11]=top-right
     list buttons = [c0, c1, prevBtn, d0, d1, "-", h0, h1, "-", s0, s1, nextBtn];
 
-    string title = "Play a card:\n" + handSuitRows(hand);
+    string title = "Play a card:";
+    if (gPlayingDummy) title = "Play for Dummy:";
+    title += "\n" + handSuitRows(hand);
     llDialog(llGetOwner(), title, buttons, gChannel);
 }
 
