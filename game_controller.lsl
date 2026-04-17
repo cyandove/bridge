@@ -290,6 +290,7 @@ default {
     }
 
     touch_start(integer total) {
+        if (llDetectedLinkNumber(0) > 1) return;  // ignore child prim (card) clicks
         if (gState == STATE_WAITING && llListFindList(gOccupied, [1]) != -1) {
             startDealing();
         } else if (gState != STATE_WAITING && gState != STATE_IDLE) {

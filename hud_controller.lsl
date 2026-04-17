@@ -1,7 +1,10 @@
 // hud_controller.lsl
 // HUD object script for human players.
-// Displays the player's private hand, provides bidding UI (multi-page dialog),
-// and card selection for play.
+//
+// When card prims are present in the HUD linkset (hcard_0..12 for the
+// player's hand, dcard_0..12 for dummy's hand), card play is handled by
+// clicking those prims directly — no llDialog is shown.  If the prims are
+// absent the existing dialog-based fallback is used automatically.
 //
 // On attach, the HUD listens on a fixed handshake channel (-7769).
 // When the player sits, the seat script sends "SEAT|N" on that channel via
@@ -9,27 +12,27 @@
 // (-7770 - N), and closes the handshake listen.
 //
 // Commands received from table (via llRegionSayTo on private channel):
-//   "HAND|seat|c0|c1|..."   — new hand dealt, update display
-//   "BID_PROMPT"            — show bidding dialog
-//   "PLAY_PROMPT"           — enable card selection mode
+//   "HAND|seat|c0|c1|..."         new hand dealt
+//   "DUMMY_HAND|seat|c0|c1|..."   dummy hand revealed / updated
+//   "BID_PROMPT|seat|hb|dbl|hs|ds" show bidding dialog
+//   "PLAY_PROMPT|forDummy"         enable card selection
 //
-// Commands sent to table (via llSay on private channel):
+// Commands sent to table:
 //   "BID|bid_integer"
 //   "PLAY|card_integer"
 
 // ---------------------------------------------------------------------------
 // Channels
 // ---------------------------------------------------------------------------
-integer HUD_HANDSHAKE_CHANNEL = -7769;  // fixed; seat pushes SEAT|N here on sit
-// Private channel is -7770 - SEAT_ID, set dynamically after handshake
+integer HUD_HANDSHAKE_CHANNEL = -7769;
 
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
-integer gSeatID        = -1;   // -1 = not yet assigned
-integer gChannel       = 0;    // private channel, set after handshake
+integer gSeatID          = -1;
+integer gChannel         = 0;
 integer gHandshakeHandle = -1;
-integer gListenHandle  = -1;
+integer gListenHandle    = -1;
 
 list    gHand          = [];
 list    gDummyHand     = [];
@@ -40,16 +43,24 @@ integer gBidPage       = 1;
 integer gCardPage      = 0;
 integer gPendingPlayPrompt = FALSE;
 
-// Auction state for bid filtering (updated each time BID_PROMPT arrives)
-integer gHighBid     = 0;   // 0 = no bid yet; 5..39 otherwise
-integer gDoubled     = 0;   // 0=none 1=doubled 2=redoubled
-integer gHighSide    = -1;  // partnership(high bidder): 0=NS 1=EW -1=none
-integer gDoublerSide = -1;  // partnership(doubler):     0=NS 1=EW -1=none
+// Auction state
+integer gHighBid     = 0;
+integer gDoubled     = 0;
+integer gHighSide    = -1;
+integer gDoublerSide = -1;
 
-// Bid encoding matches bidding_engine.lsl
 integer BID_PASS     = 0;
 integer BID_DOUBLE   = 1;
 integer BID_REDOUBLE = 2;
+
+// ---------------------------------------------------------------------------
+// Card prim link numbers (populated by discoverLinks at startup)
+// ---------------------------------------------------------------------------
+list gHandLinks      = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1]; // hcard_0..12
+list gDCardLinks     = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1]; // dcard_0..12
+list gHandLinkCards  = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1]; // card at each hand slot
+list gDCardLinkCards = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1]; // card at each dummy slot
+integer gHasPrims    = FALSE;
 
 // ---------------------------------------------------------------------------
 // Card helpers
@@ -91,7 +102,15 @@ list sortedSuitCards(list hand, integer suit) {
     return result;
 }
 
-// Build the "S: A K J\nH: Q T 9\n..." portion of a hand display string
+// Full sorted hand: S A..2, H A..2, D A..2, C A..2
+list sortCardsForDisplay(list hand) {
+    list result = [];
+    integer s;
+    for (s = 3; s >= 0; s--)
+        result += sortedSuitCards(hand, s);
+    return result;
+}
+
 string handSuitRows(list hand) {
     list suitLabels = ["C", "D", "H", "S"];
     string out = "";
@@ -114,7 +133,99 @@ string handSuitRows(list hand) {
 }
 
 // ---------------------------------------------------------------------------
-// Hand display
+// Prim link discovery
+// ---------------------------------------------------------------------------
+discoverLinks() {
+    gHandLinks  = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1];
+    gDCardLinks = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1];
+    gHasPrims   = FALSE;
+    integer total = llGetNumberOfPrims();
+    integer i;
+    for (i = 2; i <= total; i++) {
+        string n = llGetLinkName(i);
+        if (llGetSubString(n, 0, 5) == "hcard_") {
+            integer slot = (integer)llGetSubString(n, 6, -1);
+            if (slot >= 0 && slot < 13) {
+                gHandLinks = llListReplaceList(gHandLinks, [i], slot, slot);
+                gHasPrims  = TRUE;
+            }
+        } else if (llGetSubString(n, 0, 5) == "dcard_") {
+            integer slot = (integer)llGetSubString(n, 6, -1);
+            if (slot >= 0 && slot < 13)
+                gDCardLinks = llListReplaceList(gDCardLinks, [i], slot, slot);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Card prim texture helpers
+// ---------------------------------------------------------------------------
+setCardPrim(integer linkNum, integer card) {
+    string texName;
+    if (card == -1) texName = "purple_back";
+    else texName = llList2String(rankNames, card % 13)
+                 + llList2String(suitSymbols, card / 13);
+    key texKey = llGetInventoryKey(texName);
+    if (texKey == NULL_KEY) return;
+    llSetLinkPrimitiveParamsFast(linkNum, [
+        PRIM_TEXTURE, ALL_SIDES, texKey, <1.0,1.0,0.0>, ZERO_VECTOR, 0.0,
+        PRIM_COLOR,   ALL_SIDES, <1.0,1.0,1.0>, 1.0
+    ]);
+}
+
+clearCardPrim(integer linkNum) {
+    llSetLinkPrimitiveParamsFast(linkNum, [
+        PRIM_COLOR, ALL_SIDES, ZERO_VECTOR, 0.0
+    ]);
+}
+
+// ---------------------------------------------------------------------------
+// Prim hand display
+// ---------------------------------------------------------------------------
+updateHandPrims() {
+    list sorted = sortCardsForDisplay(gHand);
+    integer i;
+    for (i = 0; i < 13; i++) {
+        integer c  = -1;
+        if (i < llGetListLength(sorted)) c = llList2Integer(sorted, i);
+        gHandLinkCards = llListReplaceList(gHandLinkCards, [c], i, i);
+        integer ln = llList2Integer(gHandLinks, i);
+        if (ln != -1) {
+            if (c == -1) clearCardPrim(ln);
+            else         setCardPrim(ln, c);
+        }
+    }
+}
+
+updateDummyPrims() {
+    list sorted = sortCardsForDisplay(gDummyHand);
+    integer i;
+    for (i = 0; i < 13; i++) {
+        integer c  = -1;
+        if (i < llGetListLength(sorted)) c = llList2Integer(sorted, i);
+        gDCardLinkCards = llListReplaceList(gDCardLinkCards, [c], i, i);
+        integer ln = llList2Integer(gDCardLinks, i);
+        if (ln != -1) {
+            if (c == -1) clearCardPrim(ln);
+            else         setCardPrim(ln, c);
+        }
+    }
+}
+
+clearAllCardPrims() {
+    integer i;
+    for (i = 0; i < 13; i++) {
+        integer ln = llList2Integer(gHandLinks, i);
+        if (ln != -1) clearCardPrim(ln);
+        ln = llList2Integer(gDCardLinks, i);
+        if (ln != -1) clearCardPrim(ln);
+    }
+    gHandLinkCards  = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1];
+    gDCardLinkCards = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1];
+}
+
+// ---------------------------------------------------------------------------
+// Hover text display
 // ---------------------------------------------------------------------------
 updateHandDisplay() {
     list dirs = ["North","South","East","West"];
@@ -126,18 +237,17 @@ updateHandDisplay() {
     }
 
     string display = "Bridge HUD\n" + dir + "\n";
-    if (gSelectMode && gPlayingDummy) display += "[PLAY FOR DUMMY - touch HUD]\n";
+    if (gSelectMode && gPlayingDummy) display += "[PLAY FOR DUMMY]\n";
     display += "\n" + handSuitRows(gHand);
 
-    if (gBidMode)                       display += "[BIDDING - touch to bid]";
-    if (gSelectMode && !gPlayingDummy)  display += "[SELECT CARD - touch HUD]";
+    if (gBidMode)                      display += "[BIDDING - touch to bid]";
+    if (gSelectMode && !gPlayingDummy) display += "[SELECT CARD]";
 
     llSetText(display, <1,1,1>, 1.0);
 }
 
 // ---------------------------------------------------------------------------
 // Bidding dialog
-// One level per page (5 suit buttons + Pass + Dbl + Rdbl + Prev/Next = 9-10)
 // ---------------------------------------------------------------------------
 integer minBidLevel() {
     integer m = (gHighBid + 1) / 5;
@@ -146,15 +256,13 @@ integer minBidLevel() {
     return m;
 }
 
-// Fixed 9-button grid for bidding.
-// Layout (llDialog fills bottom-to-top, left-to-right):
+// Fixed 9-button grid (bottom-to-top, left-to-right):
 //   Row 2 (top):    [ levelC ] [ levelD ] [ levelH ]
-//   Row 1 (middle): [ levelS ] [ levelN ] [  Pass  ]
+//   Row 1 (mid):    [ levelS ] [ levelN ] [  Pass  ]
 //   Row 0 (bottom): [ <<Prev ] [  Dbl   ] [ Next>> ]
 list buildBidPage(integer level) {
     integer myPartnership = gSeatID / 2;
 
-    // Suit bids: show label if valid, else "-"
     string cBtn = "-"; string dBtn = "-"; string hBtn = "-";
     string sBtn = "-"; string nBtn = "-";
     if (level * 5 + 0 > gHighBid) cBtn = (string)level + "C";
@@ -163,21 +271,18 @@ list buildBidPage(integer level) {
     if (level * 5 + 3 > gHighBid) sBtn = (string)level + "S";
     if (level * 5 + 4 > gHighBid) nBtn = (string)level + "N";
 
-    // Dbl / Rdbl / "-"
     string dblBtn = "-";
     if (gHighBid > 0 && gDoubled == 0 && gHighSide != -1 && gHighSide != myPartnership)
         dblBtn = "Dbl";
     if (gDoubled == 1 && gDoublerSide != -1 && gDoublerSide != myPartnership)
         dblBtn = "Rdbl";
 
-    // Nav buttons
     integer minLevel = minBidLevel();
     string prevBtn = "-";
     string nextBtn = "-";
     if (level > minLevel) prevBtn = "<< Prev";
     if (level < 7)        nextBtn = "Next >>";
 
-    // button[0]=bottom-left → button[8]=top-right
     return [prevBtn, dblBtn, nextBtn, sBtn, nBtn, "Pass", cBtn, dBtn, hBtn];
 }
 
@@ -191,8 +296,8 @@ showBidDialog(integer level) {
 }
 
 // ---------------------------------------------------------------------------
-// Card selection dialog — fixed 4x3 grid, 2 cards per suit per page.
-// Layout (bottom-to-top, left-to-right):
+// Card selection dialog (fallback when no prims)
+// Fixed 4x3 grid (bottom-to-top, left-to-right):
 //   Row 3 (top):    [ S[0] ] [ S[1] ] [ Next>> ]
 //   Row 2:          [ H[0] ] [ H[1] ] [   -    ]
 //   Row 1:          [ D[0] ] [ D[1] ] [   -    ]
@@ -231,7 +336,6 @@ showCardDialog(integer page) {
         nextBase < llGetListLength(dCards) || nextBase < llGetListLength(cCards))
         nextBtn = "Next >>";
 
-    // button[0]=bottom-left → button[11]=top-right
     list buttons = [c0, c1, prevBtn, d0, d1, "-", h0, h1, "-", s0, s1, nextBtn];
 
     string title = "Play a card:";
@@ -241,34 +345,27 @@ showCardDialog(integer page) {
 }
 
 // ---------------------------------------------------------------------------
-// Parse bid from button label
+// Parse bid/card button labels
 // ---------------------------------------------------------------------------
 integer parseBidButton(string label) {
     if (label == "Pass")   return BID_PASS;
     if (label == "Dbl")    return BID_DOUBLE;
     if (label == "Rdbl")   return BID_REDOUBLE;
-
     list suitMap = ["C","D","H","S","N"];
     integer level = (integer)llGetSubString(label, 0, 0);
     string suitChar = llGetSubString(label, 1, 1);
     integer suit = llListFindList(suitMap, [suitChar]);
-    if (level >= 1 && level <= 7 && suit >= 0) {
+    if (level >= 1 && level <= 7 && suit >= 0)
         return level * 5 + suit;
-    }
     return -1;
 }
 
-// ---------------------------------------------------------------------------
-// Parse card from button label (e.g. "AS" -> card integer)
-// ---------------------------------------------------------------------------
 integer parseCardButton(string label) {
     if (llStringLength(label) < 2) return -1;
     string rankChar = llGetSubString(label, 0, 0);
     string suitChar = llGetSubString(label, 1, 1);
-
     list rankMap  = ["2","3","4","5","6","7","8","9","T","J","Q","K","A"];
     list suitMap2 = ["C","D","H","S"];
-
     integer rank = llListFindList(rankMap,  [rankChar]);
     integer suit = llListFindList(suitMap2, [suitChar]);
     if (rank < 0 || suit < 0) return -1;
@@ -276,16 +373,13 @@ integer parseCardButton(string label) {
 }
 
 // ---------------------------------------------------------------------------
-// Open handshake listen (waiting for seat to send SEAT|N)
+// Handshake / seat assignment
 // ---------------------------------------------------------------------------
 openHandshake() {
     if (gHandshakeHandle != -1) llListenRemove(gHandshakeHandle);
     gHandshakeHandle = llListen(HUD_HANDSHAKE_CHANNEL, "", NULL_KEY, "");
 }
 
-// ---------------------------------------------------------------------------
-// Called once seat ID is known — switch to private channel
-// ---------------------------------------------------------------------------
 assignSeat(integer seatID) {
     gSeatID      = seatID;
     gChannel     = -7770 - seatID;
@@ -296,7 +390,6 @@ assignSeat(integer seatID) {
     gDummyHand   = [];
     gPlayingDummy = FALSE;
 
-    // Close handshake, open private channel
     if (gHandshakeHandle != -1) {
         llListenRemove(gHandshakeHandle);
         gHandshakeHandle = -1;
@@ -313,30 +406,32 @@ assignSeat(integer seatID) {
 // ---------------------------------------------------------------------------
 default {
     state_entry() {
-        gSeatID  = -1;
-        gChannel = 0;
-        gHand    = [];
+        gSeatID            = -1;
+        gChannel           = 0;
+        gHand              = [];
         gBidMode           = FALSE;
         gSelectMode        = FALSE;
         gPendingPlayPrompt = FALSE;
+        gHandLinkCards     = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1];
+        gDCardLinkCards    = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1];
+        discoverLinks();
         llSetText("Bridge HUD\nAttach & sit", <0.5,0.5,0.5>, 1.0);
         openHandshake();
     }
 
     attach(key avatarID) {
         if (avatarID != NULL_KEY) {
-            // Attached — open handshake listen, reset state
-            gSeatID  = -1;
-            gHand    = [];
-            gBidMode    = FALSE;
-            gSelectMode = FALSE;
+            gSeatID            = -1;
+            gHand              = [];
+            gBidMode           = FALSE;
+            gSelectMode        = FALSE;
+            gPendingPlayPrompt = FALSE;
+            if (gHasPrims) clearAllCardPrims();
             llSetText("Bridge HUD\nSit to connect", <0.5,0.5,0.5>, 1.0);
             openHandshake();
-            // Announce to seat in case avatar is already sitting
             llRegionSay(HUD_HANDSHAKE_CHANNEL,
                 "HUD_READY|" + (string)llGetOwner());
         } else {
-            // Detached — clean up listens
             if (gHandshakeHandle != -1) {
                 llListenRemove(gHandshakeHandle);
                 gHandshakeHandle = -1;
@@ -349,7 +444,6 @@ default {
     }
 
     listen(integer channel, string name, key id, string message) {
-        // Handshake: seat sends "SEAT|N" when avatar sits
         if (channel == HUD_HANDSHAKE_CHANNEL) {
             list parts = llParseString2List(message, ["|"], []);
             if (llList2String(parts, 0) == "SEAT") {
@@ -358,7 +452,6 @@ default {
             return;
         }
 
-        // Private channel commands from the table
         if (channel != gChannel) return;
 
         if (llGetSubString(message, 0, 3) == "HAND") {
@@ -366,32 +459,45 @@ default {
             list parts = llParseString2List(message, ["|"], []);
             gHand = [];
             integer i;
-            for (i = 2; i < llGetListLength(parts); i++) {
+            for (i = 2; i < llGetListLength(parts); i++)
                 gHand += [(integer)llList2String(parts, i)];
-            }
-            // Full reset only on a new deal (13-card hand); mid-play updates leave modes intact
+
             if (llGetListLength(gHand) == 13) {
+                // New deal — full reset
                 gDummyHand         = [];
                 gPlayingDummy      = FALSE;
                 gBidMode           = FALSE;
                 gSelectMode        = FALSE;
                 gPendingPlayPrompt = FALSE;
+                if (gHasPrims) clearAllCardPrims();
             }
+            if (gHasPrims) updateHandPrims();
             updateHandDisplay();
             return;
         }
 
         if (llGetSubString(message, 0, 9) == "DUMMY_HAND") {
             // "DUMMY_HAND|seat|c0|c1|..."
+            integer prevLen = llGetListLength(gDummyHand);
             list parts = llParseString2List(message, ["|"], []);
             gDummyHand = [];
             integer i;
-            for (i = 2; i < llGetListLength(parts); i++) {
+            for (i = 2; i < llGetListLength(parts); i++)
                 gDummyHand += [(integer)llList2String(parts, i)];
+
+            if (gHasPrims) updateDummyPrims();
+
+            // A dummy card was removed while we were in dummy select mode — exit it
+            if (gSelectMode && gPlayingDummy && llGetListLength(gDummyHand) < prevLen) {
+                gSelectMode   = FALSE;
+                gPlayingDummy = FALSE;
+                updateHandDisplay();
             }
+
             if (gPendingPlayPrompt) {
                 gPendingPlayPrompt = FALSE;
-                showCardDialog(0);
+                if (!gHasPrims) showCardDialog(0);
+                // gHasPrims: prims now textured, gSelectMode=TRUE, player clicks a card
             }
             return;
         }
@@ -403,8 +509,8 @@ default {
             gDoubled     = (integer)llList2String(parts, 3);
             gHighSide    = (integer)llList2String(parts, 4);
             gDoublerSide = (integer)llList2String(parts, 5);
-            gBidMode    = TRUE;
-            gSelectMode = FALSE;
+            gBidMode     = TRUE;
+            gSelectMode  = FALSE;
             updateHandDisplay();
             showBidDialog(minBidLevel());
             return;
@@ -420,9 +526,11 @@ default {
             updateHandDisplay();
             if (gPlayingDummy && llGetListLength(gDummyHand) == 0) {
                 gPendingPlayPrompt = TRUE;
-            } else {
+                // Wait for DUMMY_HAND before showing anything
+            } else if (!gHasPrims) {
                 showCardDialog(0);
             }
+            // gHasPrims: prims already showing the hand, player clicks a card
             return;
         }
 
@@ -469,7 +577,30 @@ default {
     }
 
     touch_start(integer total) {
-        if (gBidMode)    showBidDialog(gBidPage);
-        if (gSelectMode) showCardDialog(gCardPage);
+        integer linkNum = llDetectedLinkNumber(0);
+
+        if (gSelectMode) {
+            integer slot = -1;
+            integer card = -1;
+            if (!gPlayingDummy) {
+                slot = llListFindList(gHandLinks, [linkNum]);
+                if (slot != -1) card = llList2Integer(gHandLinkCards, slot);
+            } else {
+                slot = llListFindList(gDCardLinks, [linkNum]);
+                if (slot != -1) card = llList2Integer(gDCardLinkCards, slot);
+            }
+            if (card != -1) {
+                gSelectMode   = FALSE;
+                gPlayingDummy = FALSE;
+                updateHandDisplay();
+                llSay(gChannel, "PLAY|" + (string)card);
+                return;
+            }
+            // No card prim matched — fallback to dialog if no prims present
+            if (!gHasPrims) showCardDialog(gCardPage);
+            return;
+        }
+
+        if (gBidMode) showBidDialog(gBidPage);
     }
 }
