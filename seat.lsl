@@ -34,6 +34,7 @@ integer MSG_SEAT_VACATED     = 404;
 integer MSG_DUMMY_REVEAL     = 401;
 integer MSG_BOT_BID_REQUEST  = 220;
 integer MSG_BOT_PLAY_REQUEST = 221;
+integer MSG_REMOVE_CARD      = 212;
 
 // ---------------------------------------------------------------------------
 // State
@@ -48,6 +49,7 @@ integer gIsHuman          = FALSE;
 integer gIsMyTurn         = FALSE;
 string  gHandStr          = "";
 string  gLastBid          = "";
+list    gDummyCards       = [];
 
 key     gNotecardQuery    = NULL_KEY;
 
@@ -55,6 +57,48 @@ key     gNotecardQuery    = NULL_KEY;
 // Helpers
 // ---------------------------------------------------------------------------
 integer listenChannel() { return -7770 - gSeatID; }
+
+integer cardSuit(integer c) { return c / 13; }
+integer cardRank(integer c) { return c % 13; }
+
+string formatHand(list cards) {
+    list rankNames  = ["2","3","4","5","6","7","8","9","T","J","Q","K","A"];
+    list suitLabels = ["C","D","H","S"];
+    string out = "";
+    integer s;
+    for (s = 3; s >= 0; s--) {
+        list sc = [];
+        integer i;
+        for (i = 0; i < llGetListLength(cards); i++) {
+            integer c = llList2Integer(cards, i);
+            if (cardSuit(c) == s) sc += [c];
+        }
+        // Insertion sort descending by rank
+        integer n = llGetListLength(sc);
+        integer j;
+        for (i = 1; i < n; i++) {
+            integer val = llList2Integer(sc, i);
+            j = i - 1;
+            while (j >= 0 && cardRank(llList2Integer(sc, j)) < cardRank(val)) {
+                sc = llListReplaceList(sc, [llList2Integer(sc, j)], j+1, j+1);
+                j--;
+            }
+            sc = llListReplaceList(sc, [val], j+1, j+1);
+        }
+        string row = llList2String(suitLabels, s) + ": ";
+        if (llGetListLength(sc) == 0) {
+            row += "-";
+        } else {
+            integer k;
+            for (k = 0; k < llGetListLength(sc); k++) {
+                if (k > 0) row += " ";
+                row += llList2String(rankNames, cardRank(llList2Integer(sc, k)));
+            }
+        }
+        out += row + "\n";
+    }
+    return out;
+}
 
 updateNameTag() {
     if (gSeatID == -1) {
@@ -70,6 +114,7 @@ updateNameTag() {
         label = direction + "\n" + llList2String(BOT_NAMES, gSeatID);
     }
     if (gLastBid != "") label += "\n" + gLastBid;
+    if (llGetListLength(gDummyCards) > 0) label += "\n" + formatHand(gDummyCards);
     if (gIsMyTurn) {
         llSetText(label, <0.3,1,0.3>, 1.0);
     } else if (gIsHuman) {
@@ -208,8 +253,9 @@ default {
 
     link_message(integer sender, integer num, string str, key id) {
         if (num == MSG_BIDDING_START) {
-            gLastBid  = "";
-            gIsMyTurn = FALSE;
+            gLastBid    = "";
+            gIsMyTurn   = FALSE;
+            gDummyCards = [];
             updateNameTag();
 
         } else if (num == MSG_BID_MADE) {
@@ -261,11 +307,31 @@ default {
 
         } else if (num == MSG_DUMMY_REVEAL) {
             // str = "dummySeat|c0|c1|..."
-            // Declarer is dummy's partner: dummySeat ^ 1
-            integer dummySeat = (integer)llList2String(
-                llParseString2List(str, ["|"], []), 0);
+            list parts    = llParseString2List(str, ["|"], []);
+            integer dummySeat = (integer)llList2String(parts, 0);
+            if (gSeatID == dummySeat) {
+                // Populate this seat's hover text with the dummy hand
+                gDummyCards = [];
+                integer i;
+                for (i = 1; i < llGetListLength(parts); i++)
+                    gDummyCards += [(integer)llList2String(parts, i)];
+                updateNameTag();
+            }
             if (gIsHuman && gSeatID == (dummySeat ^ 1)) {
                 llRegionSayTo(gAvatarKey, listenChannel(), "DUMMY_HAND|" + str);
+            }
+
+        } else if (num == MSG_REMOVE_CARD) {
+            // str = "seat|card" — remove played card from dummy display
+            list parts = llParseString2List(str, ["|"], []);
+            if ((integer)llList2String(parts, 0) == gSeatID
+                    && llGetListLength(gDummyCards) > 0) {
+                integer card = (integer)llList2String(parts, 1);
+                integer idx  = llListFindList(gDummyCards, [card]);
+                if (idx != -1) {
+                    gDummyCards = llDeleteSubList(gDummyCards, idx, idx);
+                    updateNameTag();
+                }
             }
 
         } else if (num == MSG_PLAY_REQUEST) {
