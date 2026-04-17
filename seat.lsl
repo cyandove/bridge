@@ -27,6 +27,7 @@ integer MSG_HAND_UPDATE      = 202;
 integer MSG_BID_RESPONSE     = 300;
 integer MSG_PLAY_RESPONSE    = 301;
 integer MSG_BID_MADE         = 205;
+integer MSG_CONTRACT_SET     = 103;
 integer MSG_SEAT_OCCUPIED    = 403;
 integer MSG_SEAT_VACATED     = 404;
 
@@ -212,6 +213,25 @@ default {
                 gLastBid = llList2String(parts, 1);
                 updateNameTag();
             }
+
+        } else if (num == MSG_CONTRACT_SET) {
+            // str = "declarer|level|suit|doubled"
+            list parts    = llParseString2List(str, ["|"], []);
+            integer declarer = (integer)llList2String(parts, 0);
+            integer level    = (integer)llList2String(parts, 1);
+            integer suit     = (integer)llList2String(parts, 2);
+            integer doubled  = (integer)llList2String(parts, 3);
+            if (gSeatID == declarer) {
+                list suitNames = ["C","D","H","S","N"];
+                gLastBid = (string)level + llList2String(suitNames, suit);
+                if (doubled == 1) gLastBid += " Dbl";
+                if (doubled == 2) gLastBid += " Rdbl";
+            } else if (gSeatID == (declarer ^ 1)) {
+                gLastBid = "Dummy";
+            } else {
+                gLastBid = "";
+            }
+            updateNameTag();
 
         } else if (num == MSG_HAND_UPDATE) {
             integer targetSeat = (integer)llList2String(

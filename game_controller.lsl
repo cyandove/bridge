@@ -122,8 +122,7 @@ string seatName(integer seat) {
 
 startWaiting() {
     gState = STATE_WAITING;
-    llSetText("Bridge Table\nTouch to sit", <1,1,1>, 1.0);
-    llSay(0, "Bridge table ready. Touch a seat to join.");
+    llSetText("Bridge Table\nTouch a seat to join", <1,1,1>, 1.0);
 }
 
 startDealing() {
@@ -238,23 +237,18 @@ default {
         gOccupied   = [0, 0, 0, 0];
         gGamesWon   = [0, 0];
         gVulnerable = [0, 0];
-        llSetText("Bridge Table\nTouch to start", <1,1,1>, 1.0);
+        startWaiting();
     }
 
     touch_start(integer total) {
-        if (gState == STATE_IDLE) {
-            startWaiting();
-            // Small delay then auto-start (bots fill empty seats)
-            llSetTimerEvent(3.0);
+        if (gState == STATE_WAITING && llListFindList(gOccupied, [1]) != -1) {
+            startDealing();
         }
     }
 
     timer() {
+        // Post-rubber pause expired — auto-restart
         if (gState == STATE_WAITING) {
-            llSetTimerEvent(0);
-            startDealing();
-        } else if (gState == STATE_IDLE) {
-            // Post-rubber pause expired
             llSetTimerEvent(0);
             startDealing();
         }
@@ -286,6 +280,8 @@ default {
             list parts = llParseString2List(str, ["|"], []);
             integer seat = (integer)llList2String(parts, 0);
             gOccupied = llListReplaceList(gOccupied, [1], seat, seat);
+            if (gState == STATE_WAITING)
+                llSetText("Bridge Table\nTouch when all players are ready", <1,1,1>, 1.0);
 
         // Seat vacated
         } else if (num == MSG_SEAT_VACATED) {
