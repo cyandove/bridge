@@ -334,8 +334,11 @@ default {
             list parts = llParseString2List(str, ["|"], []);
             integer seat = (integer)llList2String(parts, 0);
             gOccupied = llListReplaceList(gOccupied, [1], seat, seat);
-            if (gState == STATE_WAITING)
+            if (gState == STATE_WAITING) {
                 llSetText("Bridge Table\nTouch when all players are ready", <1,1,1>, 1.0);
+                if ((integer)llListStatistics(LIST_STAT_SUM, gOccupied) == 1)
+                    llSay(0, "Touch the table when all players are ready to start the game.");
+            }
 
         // Seat vacated
         } else if (num == MSG_SEAT_VACATED) {
