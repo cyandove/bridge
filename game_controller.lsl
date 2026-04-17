@@ -94,7 +94,9 @@ integer partnership(integer seat) {
 
 // Seat to the left (clockwise: N→E→S→W→N)
 integer leftOf(integer seat) {
-    return (seat + 1) % 4;
+    // Clockwise: N(0)→E(2)→S(1)→W(3)→N(0)
+    list next = [2, 3, 1, 0];
+    return llList2Integer(next, seat);
 }
 
 // Advance dealer one seat clockwise

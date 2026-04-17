@@ -94,7 +94,10 @@ integer gPendingPlayCard = -1;
 // Helpers
 // ---------------------------------------------------------------------------
 
-integer leftOf(integer seat) { return (seat + 1) % 4; }
+integer leftOf(integer seat) {
+    list next = [2, 3, 1, 0]; // N→E→S→W→N
+    return llList2Integer(next, seat);
+}
 
 // Whose turn in current trick? Count cards already played.
 integer currentTrickSeat() {

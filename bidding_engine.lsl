@@ -84,7 +84,10 @@ integer partnership(integer seat) {
     return 1;
 }
 
-integer leftOf(integer seat) { return (seat + 1) % 4; }
+integer leftOf(integer seat) {
+    list next = [2, 3, 1, 0]; // N→E→S→W→N
+    return llList2Integer(next, seat);
+}
 
 string bidStr(integer bid) {
     if (bid == BID_PASS)     return "Pass";
