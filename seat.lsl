@@ -45,6 +45,7 @@ string  gAvatarName       = "";
 integer gListenHandle     = -1;
 integer gHandshakeHandle  = -1;
 integer gIsHuman          = FALSE;
+integer gIsMyTurn         = FALSE;
 string  gHandStr          = "";
 string  gLastBid          = "";
 
@@ -69,7 +70,9 @@ updateNameTag() {
         label = direction + "\n" + llList2String(BOT_NAMES, gSeatID);
     }
     if (gLastBid != "") label += "\n" + gLastBid;
-    if (gIsHuman) {
+    if (gIsMyTurn) {
+        llSetText(label, <0.3,1,0.3>, 1.0);
+    } else if (gIsHuman) {
         llSetText(label, <1,1,1>, 1.0);
     } else {
         llSetText(label, <0.6,0.6,0.6>, 0.8);
@@ -122,6 +125,7 @@ onSit(key avatarKey) {
 
 onUnsit() {
     gIsHuman    = FALSE;
+    gIsMyTurn   = FALSE;
     gAvatarKey  = NULL_KEY;
     gAvatarName = "";
 
@@ -204,7 +208,8 @@ default {
 
     link_message(integer sender, integer num, string str, key id) {
         if (num == MSG_BIDDING_START) {
-            gLastBid = "";
+            gLastBid  = "";
+            gIsMyTurn = FALSE;
             updateNameTag();
 
         } else if (num == MSG_BID_MADE) {
@@ -231,6 +236,7 @@ default {
             } else {
                 gLastBid = "";
             }
+            gIsMyTurn = FALSE;
             updateNameTag();
 
         } else if (num == MSG_HAND_UPDATE) {
@@ -243,7 +249,10 @@ default {
             }
 
         } else if (num == MSG_BID_REQUEST) {
-            if ((integer)llList2String(llParseString2List(str, ["|"], []), 0) == gSeatID) {
+            integer bidSeat = (integer)llList2String(llParseString2List(str, ["|"], []), 0);
+            gIsMyTurn = (bidSeat == gSeatID);
+            updateNameTag();
+            if (bidSeat == gSeatID) {
                 if (gIsHuman)
                     llRegionSayTo(gAvatarKey, listenChannel(), "BID_PROMPT|" + str);
                 else
@@ -263,6 +272,8 @@ default {
             list parts    = llParseString2List(str, ["|"], []);
             integer seat  = (integer)llList2String(parts, 0);
             integer forDummy = (integer)llList2String(parts, 1);
+            gIsMyTurn = (seat == gSeatID);
+            updateNameTag();
             if (seat == gSeatID) {
                 if (gIsHuman) {
                     llRegionSayTo(gAvatarKey, listenChannel(),

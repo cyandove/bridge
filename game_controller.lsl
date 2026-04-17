@@ -62,6 +62,8 @@ integer gState       = 0;   // current game state (STATE_*)
 integer gDealer      = 0;   // NORTH=0, rotates each hand
 integer gCurrentSeat = 0;   // whose turn it is
 integer gTrickCount  = 0;   // tricks played this hand
+integer gTricksNS    = 0;
+integer gTricksEW    = 0;
 integer gHandCount   = 0;   // hands played this rubber
 
 // Seat occupancy: 1=human present, 0=bot
@@ -128,6 +130,8 @@ startWaiting() {
 startDealing() {
     gState = STATE_DEALING;
     gTrickCount = 0;
+    gTricksNS   = 0;
+    gTricksEW   = 0;
     llSetText("Dealing...", <1,1,0>, 1.0);
     llMessageLinked(LINK_SET, MSG_GAME_START, "", NULL_KEY);
     // deck_manager will respond with MSG_DEAL_DONE
@@ -176,6 +180,8 @@ requestPlay(integer seat) {
 trickDone(string str) {
     list parts = llParseString2List(str, ["|"], []);
     integer winner = (integer)llList2String(parts, 0);
+    gTricksNS = (integer)llList2String(parts, 1);
+    gTricksEW = (integer)llList2String(parts, 2);
     gTrickCount++;
     gCurrentSeat = winner;
 
@@ -228,6 +234,46 @@ advanceBid(string str) {
 }
 
 // ---------------------------------------------------------------------------
+// Status report (shown when table is touched during play)
+// ---------------------------------------------------------------------------
+showStatus() {
+    list suitNames = ["C","D","H","S","N"];
+
+    string phase;
+    if (gState == STATE_DEALING) {
+        phase = "Dealing";
+    } else if (gState == STATE_BIDDING) {
+        phase = "Bidding — " + seatName(gCurrentSeat) + "'s turn";
+    } else if (gState == STATE_PLAYING) {
+        string contract = (string)gContractLevel
+            + llList2String(suitNames, gContractSuit);
+        if (gDoubled == 1) contract += " Dbl";
+        if (gDoubled == 2) contract += " Rdbl";
+        phase = "Playing " + contract + " by " + seatName(gDeclarer)
+            + "\nTurn: " + seatName(gCurrentSeat)
+            + "  Tricks: NS " + (string)gTricksNS
+            + " / EW " + (string)gTricksEW;
+    } else if (gState == STATE_SCORING) {
+        phase = "Scoring";
+    } else {
+        phase = "Waiting";
+    }
+
+    string vul;
+    integer vNS = llList2Integer(gVulnerable, 0);
+    integer vEW = llList2Integer(gVulnerable, 1);
+    if      (vNS && vEW)  vul = "Both vul";
+    else if (vNS)          vul = "NS vul";
+    else if (vEW)          vul = "EW vul";
+    else                   vul = "None vul";
+
+    llSay(0, phase
+        + "\nGames — NS: " + (string)llList2Integer(gGamesWon, 0)
+        + "  EW: " + (string)llList2Integer(gGamesWon, 1)
+        + "  " + vul);
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 default {
@@ -243,6 +289,8 @@ default {
     touch_start(integer total) {
         if (gState == STATE_WAITING && llListFindList(gOccupied, [1]) != -1) {
             startDealing();
+        } else if (gState != STATE_WAITING && gState != STATE_IDLE) {
+            showStatus();
         }
     }
 
