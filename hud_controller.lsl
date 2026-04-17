@@ -38,6 +38,7 @@ integer gSelectMode    = FALSE;
 integer gBidMode       = FALSE;
 integer gBidPage       = 1;
 integer gCardPage      = 0;
+integer gPendingPlayPrompt = FALSE;
 
 // Auction state for bid filtering (updated each time BID_PROMPT arrives)
 integer gHighBid     = 0;   // 0 = no bid yet; 5..39 otherwise
@@ -315,8 +316,9 @@ default {
         gSeatID  = -1;
         gChannel = 0;
         gHand    = [];
-        gBidMode    = FALSE;
-        gSelectMode = FALSE;
+        gBidMode           = FALSE;
+        gSelectMode        = FALSE;
+        gPendingPlayPrompt = FALSE;
         llSetText("Bridge HUD\nAttach & sit", <0.5,0.5,0.5>, 1.0);
         openHandshake();
     }
@@ -367,10 +369,14 @@ default {
             for (i = 2; i < llGetListLength(parts); i++) {
                 gHand += [(integer)llList2String(parts, i)];
             }
-            gDummyHand    = [];
-            gPlayingDummy = FALSE;
-            gBidMode      = FALSE;
-            gSelectMode   = FALSE;
+            // Full reset only on a new deal (13-card hand); mid-play updates leave modes intact
+            if (llGetListLength(gHand) == 13) {
+                gDummyHand         = [];
+                gPlayingDummy      = FALSE;
+                gBidMode           = FALSE;
+                gSelectMode        = FALSE;
+                gPendingPlayPrompt = FALSE;
+            }
             updateHandDisplay();
             return;
         }
@@ -382,6 +388,10 @@ default {
             integer i;
             for (i = 2; i < llGetListLength(parts); i++) {
                 gDummyHand += [(integer)llList2String(parts, i)];
+            }
+            if (gPendingPlayPrompt) {
+                gPendingPlayPrompt = FALSE;
+                showCardDialog(0);
             }
             return;
         }
@@ -406,8 +416,13 @@ default {
             gPlayingDummy = (integer)llList2String(parts, 1);
             gSelectMode   = TRUE;
             gBidMode      = FALSE;
+            gPendingPlayPrompt = FALSE;
             updateHandDisplay();
-            showCardDialog(0);
+            if (gPlayingDummy && llGetListLength(gDummyHand) == 0) {
+                gPendingPlayPrompt = TRUE;
+            } else {
+                showCardDialog(0);
+            }
             return;
         }
 
@@ -445,14 +460,7 @@ default {
             }
             integer card = parseCardButton(message);
             if (card >= 0) {
-                gSelectMode = FALSE;
-                if (gPlayingDummy) {
-                    integer idx = llListFindList(gDummyHand, [card]);
-                    if (idx != -1) gDummyHand = llDeleteSubList(gDummyHand, idx, idx);
-                } else {
-                    integer idx = llListFindList(gHand, [card]);
-                    if (idx != -1) gHand = llDeleteSubList(gHand, idx, idx);
-                }
+                gSelectMode   = FALSE;
                 gPlayingDummy = FALSE;
                 updateHandDisplay();
                 llSay(gChannel, "PLAY|" + (string)card);

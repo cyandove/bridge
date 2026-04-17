@@ -51,6 +51,10 @@ string  gHandStr          = "";
 string  gLastBid          = "";
 list    gDummyCards       = [];
 
+integer gIsDeclarer       = FALSE;
+integer gDummySeatID      = -1;
+integer gDummyRevealed    = FALSE;
+
 key     gNotecardQuery    = NULL_KEY;
 
 // ---------------------------------------------------------------------------
@@ -186,8 +190,11 @@ onUnsit() {
 // ---------------------------------------------------------------------------
 default {
     state_entry() {
-        gSeatID  = -1;
-        gIsHuman = FALSE;
+        gSeatID        = -1;
+        gIsHuman       = FALSE;
+        gIsDeclarer    = FALSE;
+        gDummySeatID   = -1;
+        gDummyRevealed = FALSE;
         llSetText("Loading...", <0.5,0.5,0.5>, 1.0);
         loadNotecard();
     }
@@ -253,9 +260,12 @@ default {
 
     link_message(integer sender, integer num, string str, key id) {
         if (num == MSG_BIDDING_START) {
-            gLastBid    = "";
-            gIsMyTurn   = FALSE;
-            gDummyCards = [];
+            gLastBid       = "";
+            gIsMyTurn      = FALSE;
+            gDummyCards    = [];
+            gIsDeclarer    = FALSE;
+            gDummySeatID   = -1;
+            gDummyRevealed = FALSE;
             updateNameTag();
 
         } else if (num == MSG_BID_MADE) {
@@ -277,11 +287,18 @@ default {
                 gLastBid = (string)level + llList2String(suitNames, suit);
                 if (doubled == 1) gLastBid += " Dbl";
                 if (doubled == 2) gLastBid += " Rdbl";
+                gIsDeclarer  = TRUE;
+                gDummySeatID = declarer ^ 1;
             } else if (gSeatID == (declarer ^ 1)) {
-                gLastBid = "Dummy";
+                gLastBid     = "Dummy";
+                gIsDeclarer  = FALSE;
+                gDummySeatID = -1;
             } else {
-                gLastBid = "";
+                gLastBid     = "";
+                gIsDeclarer  = FALSE;
+                gDummySeatID = -1;
             }
+            gDummyRevealed = FALSE;
             gIsMyTurn = FALSE;
             updateNameTag();
 
@@ -292,6 +309,9 @@ default {
                 gHandStr = str;
                 if (gIsHuman)
                     llRegionSayTo(gAvatarKey, listenChannel(), "HAND|" + str);
+            }
+            if (gIsDeclarer && gIsHuman && gDummyRevealed && targetSeat == gDummySeatID) {
+                llRegionSayTo(gAvatarKey, listenChannel(), "DUMMY_HAND|" + str);
             }
 
         } else if (num == MSG_BID_REQUEST) {
@@ -319,6 +339,7 @@ default {
             }
             if (gIsHuman && gSeatID == (dummySeat ^ 1)) {
                 llRegionSayTo(gAvatarKey, listenChannel(), "DUMMY_HAND|" + str);
+                gDummyRevealed = TRUE;
             }
 
         } else if (num == MSG_REMOVE_CARD) {

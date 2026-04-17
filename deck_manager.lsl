@@ -176,6 +176,7 @@ removeCard(integer seat, integer card) {
     if (idx != -1) {
         hand = llDeleteSubList(hand, idx, idx);
         storeHand(seat, hand);
+        llMessageLinked(LINK_SET, MSG_HAND_UPDATE, serialiseHand(seat), NULL_KEY);
     }
 }
 
