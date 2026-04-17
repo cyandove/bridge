@@ -78,7 +78,7 @@ No notecard is needed in the HUD itself. When the avatar sits (or attaches the H
 
 ## Step 5 — Card Textures (Optional)
 
-The current `card_display.lsl` uses floating text for the trick display and dummy hand. For a graphical card display using prim faces or card prims:
+The dummy's hand is shown as floating text above the dummy's seat prim (handled by `seat.lsl`) and updates live as cards are played. The current `card_display.lsl` handles the trick display area on the table surface. For a graphical card display using prim faces or card prims:
 
 1. Upload 52 card face textures and 1 card back texture to your SL inventory
 2. Name them consistently, e.g. `card_2C`, `card_AS`, `card_TH`
@@ -124,16 +124,18 @@ All scripts use `llMessageLinked(LINK_SET, num, str, NULL_KEY)` on these message
 | `MSG_BID_REQUEST` | 200 | controller → seat | Request a bid |
 | `MSG_PLAY_REQUEST` | 201 | controller → seat | Request a card |
 | `MSG_HAND_UPDATE` | 202 | deck → seats/bot | New hand data |
-| `MSG_BID_ADVANCE` | 203 | bidding → controller | Next bidder |
+| `MSG_BID_ADVANCE` | 203 | bidding → controller | Next bidder + auction state |
+| `MSG_BID_MADE` | 205 | bidding → seats | A bid was made (for hover text) |
+| `MSG_REMOVE_CARD` | 212 | play → deck/seat | Card played — remove from hand |
+| `MSG_BOT_BID_REQUEST` | 220 | seat → bot | Seat is empty, bot bids |
+| `MSG_BOT_PLAY_REQUEST` | 221 | seat → bot | Seat is empty, bot plays |
 | `MSG_BID_RESPONSE` | 300 | seat/bot → bidding | Bid submitted |
 | `MSG_PLAY_RESPONSE` | 301 | seat/bot → play | Card played |
 | `MSG_SCORE_UPDATE` | 400 | scoring → controller | Score state |
-| `MSG_DUMMY_REVEAL` | 401 | play → display | Show dummy hand |
+| `MSG_DUMMY_REVEAL` | 401 | play → seat/display | Show dummy hand (seat updates hover text) |
 | `MSG_TRICK_PLAYED` | 402 | play → display/bot | Card placed in trick |
 | `MSG_SEAT_OCCUPIED` | 403 | seat → controller/display | Human sat down |
 | `MSG_SEAT_VACATED` | 404 | seat → controller/display | Human stood up |
-| `MSG_BOT_BID_REQUEST` | 220 | seat → bot | Seat is empty, bot bids |
-| `MSG_BOT_PLAY_REQUEST` | 221 | seat → bot | Seat is empty, bot plays |
 
 ---
 
@@ -161,5 +163,7 @@ These are hardcoded in `seat.lsl` as `-7770 - SEAT_ID`. Change both `seat.lsl` a
 - [ ] HUD object placed in root prim inventory
 - [ ] Table object permissions set appropriately
 - [ ] HUD objects have Copy+Transfer permissions
-- [ ] Touch table to verify scripts reset cleanly (floating text shows "Bridge Table")
-- [ ] Sit on a seat to verify HUD is given and name tag updates
+- [ ] Verify table floating text shows "Bridge Table / Touch a seat to join" on rez
+- [ ] Sit on a seat — verify HUD is given, name tag updates, and chat announces "Touch the table when all players are ready"
+- [ ] Touch table after sitting — verify deal starts
+- [ ] Touch table mid-hand — verify status report appears in chat
