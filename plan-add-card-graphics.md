@@ -10,6 +10,7 @@
 | HUD hand card prims (hcard_0..12) | hud_controller.lsl | Done |
 | HUD dummy card prims (dcard_0..12) | hud_controller.lsl | Done |
 | Two-click card selection (highlight → play) | hud_controller.lsl, card_display.lsl | Done |
+| "start" prim Ready button on HUD | hud_controller.lsl | Done |
 | HUD flip for dummy hand (Y-axis rotation) | hud_controller.lsl | Disabled (infra kept) |
 | Inter-trick and end-of-hand pause delays | game_controller.lsl | Done |
 | Suit-violation re-prompt fix (dummy plays) | play_engine.lsl | Done |
@@ -77,7 +78,9 @@ Link all into the HUD linked object. The original root prim (with `hud_controlle
 
 **Hand prims (13):** `hcard_0` through `hcard_12` — player's own cards, left-to-right in suit order (S→C, high→low)
 
-**Dummy prims (13):** `dcard_0` through `dcard_12` — dummy's cards, shown on HUD back panel when playing for dummy
+**Dummy prims (13):** `dcard_0` through `dcard_12` — dummy's cards, shown on HUD when playing for dummy
+
+**Ready prim (1):** `start` — green prim button; shows "Ready" floating text on attach, "✓ Ready" when clicked. Text clears when the deal arrives.
 
 After building, place the complete HUD object into **each of the four seat prim inventories** (seat.lsl gives it from the seat prim, not the root prim).
 

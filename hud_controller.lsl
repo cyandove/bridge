@@ -63,6 +63,7 @@ list gHandLinkCards  = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1]; // card at each
 list gDCardLinkCards = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1]; // card at each dummy slot
 integer gHasPrims     = FALSE;
 integer gSelectedSlot = -1;   // highlighted card slot (-1 = none)
+integer gStartLink    = -1;   // "start" ready-toggle prim
 
 // ---------------------------------------------------------------------------
 // Card helpers
@@ -141,6 +142,7 @@ discoverLinks() {
     gHandLinks  = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1];
     gDCardLinks = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1];
     gHasPrims   = FALSE;
+    gStartLink  = -1;
     integer total = llGetNumberOfPrims();
     integer i;
     for (i = 2; i <= total; i++) {
@@ -155,8 +157,18 @@ discoverLinks() {
             integer slot = (integer)llGetSubString(n, 6, -1);
             if (slot >= 0 && slot < 13)
                 gDCardLinks = llListReplaceList(gDCardLinks, [i], slot, slot);
+        } else if (n == "start") {
+            gStartLink = i;
         }
     }
+}
+
+updateStartPrim() {
+    if (gStartLink == -1) return;
+    if (gReady)
+        llSetLinkPrimitiveParamsFast(gStartLink, [PRIM_TEXT, "\u2713 Ready", <0.3,1.0,0.3>, 1.0]);
+    else
+        llSetLinkPrimitiveParamsFast(gStartLink, [PRIM_TEXT, "Ready", <1.0,1.0,1.0>, 1.0]);
 }
 
 // ---------------------------------------------------------------------------
@@ -457,6 +469,7 @@ assignSeat(integer seatID) {
 
     list seatNames = ["North","South","East","West"];
     llSetText("Bridge HUD\n" + llList2String(seatNames, seatID), <0.5,1,0.5>, 1.0);
+    updateStartPrim();
 }
 
 // ---------------------------------------------------------------------------
@@ -476,6 +489,7 @@ default {
         gDCardLinkCards    = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1];
         discoverLinks();
         llSetText("Bridge HUD\nAttach & sit", <0.5,0.5,0.5>, 1.0);
+        updateStartPrim();
         openHandshake();
     }
 
@@ -491,6 +505,7 @@ default {
             gSelectedSlot      = -1;
             if (gHasPrims) clearAllCardPrims();
             llSetText("Bridge HUD\nSit to connect", <0.5,0.5,0.5>, 1.0);
+            updateStartPrim();
             openHandshake();
             llRegionSay(HUD_HANDSHAKE_CHANNEL,
                 "HUD_READY|" + (string)llGetOwner());
@@ -537,6 +552,8 @@ default {
                 gPendingPlayPrompt = FALSE;
                 gReady             = FALSE;
                 gSelectedSlot      = -1;
+                if (gStartLink != -1)
+                    llSetLinkPrimitiveParamsFast(gStartLink, [PRIM_TEXT, "", ZERO_VECTOR, 0.0]);
 
                 if (gHasPrims) clearAllCardPrims();
             }
@@ -691,10 +708,11 @@ default {
 
         if (gBidMode) showBidDialog(gBidPage);
 
-        // Root prim touch when idle → toggle ready state
-        if (linkNum == 1 && !gBidMode && !gSelectMode && gSeatID != -1) {
+        // "start" prim touch → toggle ready state
+        if (linkNum == gStartLink && gStartLink != -1 && gSeatID != -1) {
             gReady = !gReady;
             llSay(gChannel, "READY|" + (string)gReady);
+            updateStartPrim();
         }
     }
 }
