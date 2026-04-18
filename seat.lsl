@@ -52,6 +52,7 @@ string  gHandStr          = "";
 string  gLastBid          = "";
 list    gDummyCards       = [];
 
+integer gReady            = FALSE;
 integer gIsDeclarer       = FALSE;
 integer gDummySeatID      = -1;
 integer gDummyRevealed    = FALSE;
@@ -120,7 +121,10 @@ updateNameTag() {
     }
     if (gLastBid != "") label += "\n" + gLastBid;
     if (llGetListLength(gDummyCards) > 0) label += "\n" + formatHand(gDummyCards);
+    if (gIsHuman && gReady && !gIsMyTurn) label += "\nReady";
     if (gIsMyTurn) {
+        llSetText(label, <0.3,1,0.3>, 1.0);
+    } else if (gIsHuman && gReady) {
         llSetText(label, <0.3,1,0.3>, 1.0);
     } else if (gIsHuman) {
         llSetText(label, <1,1,1>, 1.0);
@@ -176,6 +180,7 @@ onSit(key avatarKey) {
 onUnsit() {
     gIsHuman    = FALSE;
     gIsMyTurn   = FALSE;
+    gReady      = FALSE;
     gAvatarKey  = NULL_KEY;
     gAvatarName = "";
 
@@ -255,6 +260,9 @@ default {
             } else if (msgType == "PLAY") {
                 llMessageLinked(LINK_SET, MSG_PLAY_RESPONSE,
                     (string)gSeatID + "|" + llList2String(parts, 1), NULL_KEY);
+            } else if (msgType == "READY") {
+                gReady = (integer)llList2String(parts, 1);
+                updateNameTag();
             }
         }
     }
@@ -263,6 +271,7 @@ default {
         if (num == MSG_BIDDING_START || num == MSG_GAME_RESET) {
             gLastBid       = "";
             gIsMyTurn      = FALSE;
+            gReady         = FALSE;
             gDummyCards    = [];
             gIsDeclarer    = FALSE;
             gDummySeatID   = -1;

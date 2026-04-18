@@ -42,6 +42,7 @@ integer gBidMode       = FALSE;
 integer gBidPage       = 1;
 integer gCardPage      = 0;
 integer gPendingPlayPrompt = FALSE;
+integer gReady         = FALSE;
 
 // Auction state
 integer gHighBid     = 0;
@@ -445,6 +446,7 @@ assignSeat(integer seatID) {
     gDoublerSide = -1;
     gDummyHand    = [];
     gPlayingDummy = FALSE;
+    gReady        = FALSE;
     clearSelection();
     gSelectedSlot = -1;
 
@@ -470,6 +472,7 @@ default {
         gBidMode           = FALSE;
         gSelectMode        = FALSE;
         gPendingPlayPrompt = FALSE;
+        gReady             = FALSE;
         gSelectedSlot      = -1;
         gHandLinkCards     = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1];
         gDCardLinkCards    = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1];
@@ -485,6 +488,7 @@ default {
             gBidMode           = FALSE;
             gSelectMode        = FALSE;
             gPendingPlayPrompt = FALSE;
+            gReady             = FALSE;
             clearSelection();
             gSelectedSlot      = -1;
             if (gHasPrims) clearAllCardPrims();
@@ -533,6 +537,7 @@ default {
                 gBidMode           = FALSE;
                 gSelectMode        = FALSE;
                 gPendingPlayPrompt = FALSE;
+                gReady             = FALSE;
                 gSelectedSlot      = -1;
 
                 if (gHasPrims) clearAllCardPrims();
@@ -687,5 +692,11 @@ default {
         }
 
         if (gBidMode) showBidDialog(gBidPage);
+
+        // Root prim touch when idle → toggle ready state
+        if (linkNum == 1 && !gBidMode && !gSelectMode && gSeatID != -1) {
+            gReady = !gReady;
+            llSay(gChannel, "READY|" + (string)gReady);
+        }
     }
 }
