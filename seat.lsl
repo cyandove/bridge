@@ -359,7 +359,8 @@ default {
             list parts    = llParseString2List(str, ["|"], []);
             integer seat  = (integer)llList2String(parts, 0);
             integer forDummy = (integer)llList2String(parts, 1);
-            gIsMyTurn = (seat == gSeatID);
+            if (forDummy) gIsMyTurn = (gSeatID == (seat ^ 1));  // dummy's seat goes green
+            else          gIsMyTurn = (seat == gSeatID);
             updateNameTag();
             if (seat == gSeatID) {
                 if (gIsHuman) {
