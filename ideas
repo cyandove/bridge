@@ -1,0 +1,7 @@
+touch table for menu (start game, end game, reset game)
+add ready button to hud, once all seated players indicate they're ready, it can start
+Update hud to better indicate your hand vs dummy's hand
+Automatically show the number of points you have in your hand
+If the last person stands, reset the game
+Instead of blanking out the invalid bids, show a red X emoji next to the bid
+Maybe display the bid history in the menu text too.
