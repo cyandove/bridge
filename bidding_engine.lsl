@@ -105,6 +105,14 @@ string seatName(integer seat) {
     return llList2String(names, seat);
 }
 
+string auctionSuffix() {
+    string s = "|" + (string)gDealer;
+    integer i;
+    for (i = 0; i < llGetListLength(gAuction); i++)
+        s += "|" + (string)llList2Integer(gAuction, i);
+    return s;
+}
+
 // ---------------------------------------------------------------------------
 // Reset for a new auction
 // ---------------------------------------------------------------------------
@@ -188,7 +196,7 @@ processBid(integer seat, integer bid) {
         integer dp = -1; if (gDoubler   != -1) dp = partnership(gDoubler);
         llMessageLinked(LINK_SET, MSG_BID_REQUEST,
             (string)seat + "|" + (string)gHighBid + "|" + (string)gDoubled
-            + "|" + (string)hp + "|" + (string)dp, NULL_KEY);
+            + "|" + (string)hp + "|" + (string)dp + auctionSuffix(), NULL_KEY);
         return;
     }
 
@@ -241,7 +249,8 @@ processBid(integer seat, integer bid) {
     integer dp = -1; if (gDoubler   != -1) dp = partnership(gDoubler);
     llMessageLinked(LINK_SET, MSG_BID_ADVANCE,
         (string)gCurrentBidder + "|" + (string)gHighBid + "|"
-        + (string)gDoubled + "|" + (string)hp + "|" + (string)dp, NULL_KEY);
+        + (string)gDoubled + "|" + (string)hp + "|" + (string)dp
+        + auctionSuffix(), NULL_KEY);
 }
 
 // ---------------------------------------------------------------------------

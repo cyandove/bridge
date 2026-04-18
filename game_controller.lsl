@@ -177,7 +177,7 @@ startBidding() {
     llMessageLinked(LINK_SET, MSG_BIDDING_START,
         (string)gDealer + "|" + (string)gCurrentSeat, NULL_KEY);
     llMessageLinked(LINK_SET, MSG_BID_REQUEST,
-        (string)gCurrentSeat + "|0|0|-1|-1", NULL_KEY);
+        (string)gCurrentSeat + "|0|0|-1|-1|" + (string)gDealer, NULL_KEY);
 }
 
 // Called by bidding_engine via MSG_CONTRACT_SET

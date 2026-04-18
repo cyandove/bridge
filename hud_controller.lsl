@@ -43,6 +43,8 @@ integer gBidPage       = 1;
 integer gCardPage      = 0;
 integer gPendingPlayPrompt = FALSE;
 integer gReady         = FALSE;
+integer gAuctionDealer = -1;
+list    gAuctionLog    = [];
 
 // Auction state
 integer gHighBid     = 0;
@@ -319,13 +321,59 @@ list buildBidPage(integer level) {
     return [prevBtn, dblBtn, nextBtn, sBtn, nBtn, "Pass", cBtn, dBtn, hBtn];
 }
 
+string auctionHistoryStr() {
+    if (gAuctionDealer == -1) return "";
+    list leftOfMap = [2, 3, 1, 0]; // indexed by seat: N→E, S→W, E→S, W→N
+    integer first = llList2Integer(leftOfMap, gAuctionDealer);
+    // Column order: first bidder → clockwise
+    list colSeats = [];
+    integer s = first;
+    integer i;
+    for (i = 0; i < 4; i++) {
+        colSeats += [s];
+        s = llList2Integer(leftOfMap, s);
+    }
+    list initials = ["N","S","E","W"]; // indexed by seat ID (0=N,1=S,2=E,3=W)
+    string out = "";
+    for (i = 0; i < 4; i++) {
+        string h = llList2String(initials, llList2Integer(colSeats, i));
+        if (i < 3) out += llGetSubString(h + "    ", 0, 3) + " ";
+        else        out += h;
+    }
+    out += "\n";
+    integer n = llGetListLength(gAuctionLog);
+    integer row = 0;
+    while (row * 4 < n) {
+        for (i = 0; i < 4; i++) {
+            integer bidIdx = row * 4 + i;
+            string cell = "";
+            if (bidIdx < n) {
+                integer bid = llList2Integer(gAuctionLog, bidIdx);
+                if      (bid == 0) cell = "-";
+                else if (bid == 1) cell = "Dbl";
+                else if (bid == 2) cell = "Rdb";
+                else {
+                    list suits = ["C","D","H","S","N"];
+                    cell = (string)(bid / 5) + llList2String(suits, bid % 5);
+                }
+            }
+            if (i < 3) out += llGetSubString(cell + "    ", 0, 3) + " ";
+            else if (cell != "") out += cell;
+        }
+        out += "\n";
+        row++;
+    }
+    return out;
+}
+
 showBidDialog(integer level) {
     integer minLevel = minBidLevel();
     if (level < minLevel) level = minLevel;
     if (level > 7)        level = 7;
     gBidPage = level;
     list buttons = buildBidPage(level);
-    llDialog(llGetOwner(), "Your bid (Level " + (string)level + "):", buttons, gChannel);
+    string msg = auctionHistoryStr() + "Your bid (Level " + (string)level + "):";
+    llDialog(llGetOwner(), msg, buttons, gChannel);
 }
 
 // ---------------------------------------------------------------------------
@@ -490,6 +538,8 @@ default {
         gSelectMode        = FALSE;
         gPendingPlayPrompt = FALSE;
         gReady             = FALSE;
+        gAuctionDealer     = -1;
+        gAuctionLog        = [];
         gSelectedSlot      = -1;
         gHandLinkCards     = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1];
         gDCardLinkCards    = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1];
@@ -507,6 +557,8 @@ default {
             gSelectMode        = FALSE;
             gPendingPlayPrompt = FALSE;
             gReady             = FALSE;
+            gAuctionDealer     = -1;
+            gAuctionLog        = [];
             clearSelection();
             gSelectedSlot      = -1;
             if (gHasPrims) clearAllCardPrims();
@@ -557,6 +609,8 @@ default {
                 gSelectMode        = FALSE;
                 gPendingPlayPrompt = FALSE;
                 gReady             = FALSE;
+                gAuctionDealer     = -1;
+                gAuctionLog        = [];
                 gSelectedSlot      = -1;
                 if (gStartLink != -1)
                     llSetLinkPrimitiveParamsFast(gStartLink, [PRIM_TEXT, "", ZERO_VECTOR, 0.0]);
@@ -598,12 +652,19 @@ default {
         }
 
         if (llGetSubString(message, 0, 9) == "BID_PROMPT") {
-            // "BID_PROMPT|seat|high_bid|doubled|high_side|doubler_side"
+            // "BID_PROMPT|seat|high_bid|doubled|high_side|doubler_side|dealer|bid0|..."
             list parts   = llParseString2List(message, ["|"], []);
             gHighBid     = (integer)llList2String(parts, 2);
             gDoubled     = (integer)llList2String(parts, 3);
             gHighSide    = (integer)llList2String(parts, 4);
             gDoublerSide = (integer)llList2String(parts, 5);
+            if (llGetListLength(parts) > 6) {
+                gAuctionDealer = (integer)llList2String(parts, 6);
+                gAuctionLog = [];
+                integer ai;
+                for (ai = 7; ai < llGetListLength(parts); ai++)
+                    gAuctionLog += [(integer)llList2String(parts, ai)];
+            }
             gBidMode     = TRUE;
             gSelectMode  = FALSE;
             updateHandDisplay();
