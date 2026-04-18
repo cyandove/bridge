@@ -323,7 +323,12 @@ default {
                 // Must follow suit — reject
                 llSay(0, seatName(seat) + ": must follow suit ("
                     + llList2String(["C","D","H","S"], gLedSuit) + ").");
-                llMessageLinked(LINK_SET, MSG_PLAY_REQUEST, (string)seat, NULL_KEY);
+                // If the rejected seat was the dummy, re-prompt the declarer
+                integer reqSeat  = seat;
+                integer forDummy = 0;
+                if (seat == gDummy) { reqSeat = gDeclarer; forDummy = 1; }
+                llMessageLinked(LINK_SET, MSG_PLAY_REQUEST,
+                    (string)reqSeat + "|" + (string)forDummy, NULL_KEY);
             } else {
                 acceptPlay(seat, card);
             }

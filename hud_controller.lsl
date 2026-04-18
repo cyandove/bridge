@@ -174,7 +174,6 @@ setCardPrim(integer linkNum, integer card) {
     ]);
 }
 
-// Y-axis HUD rotation adds an X-flip, so cancel it; keep Y-flip fix
 setDummyCardPrim(integer linkNum, integer card) {
     string texName;
     if (card == -1) texName = "purple_back";
@@ -183,7 +182,7 @@ setDummyCardPrim(integer linkNum, integer card) {
     key texKey = llGetInventoryKey(texName);
     if (texKey == NULL_KEY) return;
     llSetLinkPrimitiveParamsFast(linkNum, [
-        PRIM_TEXTURE, ALL_SIDES, texKey, <1.0,-1.0,0.0>, ZERO_VECTOR, 0.0,
+        PRIM_TEXTURE, ALL_SIDES, texKey, <-1.0,1.0,0.0>, ZERO_VECTOR, 0.0,
         PRIM_COLOR,   ALL_SIDES, <1.0,1.0,1.0>, 1.0
     ]);
 }
