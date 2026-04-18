@@ -174,6 +174,20 @@ setCardPrim(integer linkNum, integer card) {
     ]);
 }
 
+// Mirrored repeats counteract X-flip from Y-axis HUD rotation
+setDummyCardPrim(integer linkNum, integer card) {
+    string texName;
+    if (card == -1) texName = "purple_back";
+    else texName = llList2String(rankNames, card % 13)
+                 + llList2String(suitSymbols, card / 13);
+    key texKey = llGetInventoryKey(texName);
+    if (texKey == NULL_KEY) return;
+    llSetLinkPrimitiveParamsFast(linkNum, [
+        PRIM_TEXTURE, ALL_SIDES, texKey, <-1.0,1.0,0.0>, ZERO_VECTOR, 0.0,
+        PRIM_COLOR,   ALL_SIDES, <1.0,1.0,1.0>, 1.0
+    ]);
+}
+
 clearCardPrim(integer linkNum) {
     llSetLinkPrimitiveParamsFast(linkNum, [
         PRIM_COLOR, ALL_SIDES, ZERO_VECTOR, 0.0
@@ -208,7 +222,7 @@ updateDummyPrims() {
         integer ln = llList2Integer(gDCardLinks, i);
         if (ln != -1) {
             if (c == -1) clearCardPrim(ln);
-            else         setCardPrim(ln, c);
+            else         setDummyCardPrim(ln, c);
         }
     }
 }
@@ -410,7 +424,7 @@ clearSelection() {
 // ---------------------------------------------------------------------------
 setHudFace(integer showDummy) {
     if (showDummy)
-        llSetLocalRot(<1.0, 0.0, 0.0, 0.0>);  // 180 deg around X: back face forward
+        llSetLocalRot(<0.0, 1.0, 0.0, 0.0>);  // 180 deg around Y: back face forward
     else
         llSetLocalRot(ZERO_ROTATION);
 }
@@ -514,13 +528,14 @@ default {
             if (llGetListLength(gHand) == 13) {
                 // New deal — full reset
                 clearSelection();
+                setHudFace(FALSE);
                 gDummyHand         = [];
                 gPlayingDummy      = FALSE;
                 gBidMode           = FALSE;
                 gSelectMode        = FALSE;
                 gPendingPlayPrompt = FALSE;
                 gSelectedSlot      = -1;
-                setHudFace(FALSE);
+
                 if (gHasPrims) clearAllCardPrims();
             }
             if (gHasPrims) updateHandPrims();
@@ -542,6 +557,7 @@ default {
             // A dummy card was removed while we were in dummy select mode — exit it
             if (gSelectMode && gPlayingDummy && llGetListLength(gDummyHand) < prevLen) {
                 clearSelection();
+                setHudFace(FALSE);
                 gSelectMode   = FALSE;
                 gPlayingDummy = FALSE;
                 gSelectedSlot = -1;
