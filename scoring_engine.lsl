@@ -16,6 +16,7 @@
 // ---------------------------------------------------------------------------
 integer MSG_CONTRACT_SET = 103;
 integer MSG_HAND_DONE    = 106;
+integer MSG_GAME_RESET   = 108;
 integer MSG_SCORE_UPDATE = 400;
 
 // ---------------------------------------------------------------------------
@@ -247,6 +248,16 @@ default {
             integer tricksNS = (integer)llList2String(parts, 1);
             integer tricksEW = (integer)llList2String(parts, 2);
             scoreHand(tricksNS, tricksEW);
+
+        } else if (num == MSG_GAME_RESET) {
+            // str="0" abort hand (preserve rubber); str="1" full reset
+            gDeclarer = -1;
+            if ((integer)str == 1) {
+                gBelowNS = 0; gBelowEW = 0;
+                gAboveNS = 0; gAboveEW = 0;
+                gGamesWon   = [0, 0];
+                gVulnerable = [0, 0];
+            }
         }
     }
 }

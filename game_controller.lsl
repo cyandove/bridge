@@ -10,6 +10,7 @@
 // Message type constants (shared across all scripts)
 // ---------------------------------------------------------------------------
 // Game flow
+integer MSG_GAME_RESET      = 108;
 integer MSG_GAME_START      = 100;
 integer MSG_DEAL_DONE       = 101;
 integer MSG_BIDDING_START   = 102;
@@ -67,6 +68,9 @@ integer gTricksEW    = 0;
 integer gPendingLead = -1;  // winner waiting for inter-trick delay
 integer gHandCount   = 0;   // hands played this rubber
 string  gHandDoneStr = "";  // saved for delayed MSG_HAND_DONE after trick 13
+integer gMenuHandle  = -1;  // listen handle for table menu dialog
+
+integer MENU_CHANNEL = -7801;
 
 // Seat occupancy: 1=human present, 0=bot
 list gOccupied = [0, 0, 0, 0];
@@ -126,7 +130,7 @@ string seatName(integer seat) {
 
 startWaiting() {
     gState = STATE_WAITING;
-    llSetText("Bridge Table\nTouch a seat to join", <1,1,1>, 1.0);
+    updateTableText();
 }
 
 startDealing() {
@@ -238,6 +242,59 @@ advanceBid(string str) {
 }
 
 // ---------------------------------------------------------------------------
+// Table menu (shown on any touch)
+// ---------------------------------------------------------------------------
+updateTableText() {
+    if (llListFindList(gOccupied, [1]) != -1)
+        llSetText("Bridge Table\nTouch when all players are ready", <1,1,1>, 1.0);
+    else
+        llSetText("Bridge Table\nTouch a seat to join", <1,1,1>, 1.0);
+}
+
+showMenu(key toucher) {
+    if (gMenuHandle != -1) { llListenRemove(gMenuHandle); gMenuHandle = -1; }
+    list buttons;
+    if (gState == STATE_IDLE || gState == STATE_WAITING) {
+        if (llListFindList(gOccupied, [1]) == -1) { showStatus(); return; }
+        buttons = ["Start Game", "Status"];
+    } else {
+        buttons = ["End Hand", "Reset Table", "Status"];
+    }
+    gMenuHandle = llListen(MENU_CHANNEL, "", toucher, "");
+    llDialog(toucher, "Bridge Table", buttons, MENU_CHANNEL);
+}
+
+endHand() {
+    llSetTimerEvent(0);
+    gPendingLead = -1;
+    gTrickCount  = 0;
+    gTricksNS    = 0;
+    gTricksEW    = 0;
+    gState       = STATE_WAITING;
+    llMessageLinked(LINK_SET, MSG_GAME_RESET, "0", NULL_KEY);
+    llSay(0, "Hand ended.");
+    updateTableText();
+}
+
+resetTable() {
+    llSetTimerEvent(0);
+    gPendingLead   = -1;
+    gTrickCount    = 0;
+    gTricksNS      = 0;
+    gTricksEW      = 0;
+    gDeclarer      = -1;
+    gDummy         = -1;
+    gGamesWon      = [0, 0];
+    gVulnerable    = [0, 0];
+    gHandCount     = 0;
+    gDealer        = NORTH;
+    gState         = STATE_WAITING;
+    llMessageLinked(LINK_SET, MSG_GAME_RESET, "1", NULL_KEY);
+    llSay(0, "Table reset.");
+    updateTableText();
+}
+
+// ---------------------------------------------------------------------------
 // Status report (shown when table is touched during play)
 // ---------------------------------------------------------------------------
 showStatus() {
@@ -291,10 +348,23 @@ default {
     }
 
     touch_start(integer total) {
-        if (llDetectedLinkNumber(0) > 1) return;  // ignore child prim (card) clicks
-        if (gState == STATE_WAITING && llListFindList(gOccupied, [1]) != -1) {
-            startDealing();
-        } else if (gState != STATE_WAITING && gState != STATE_IDLE) {
+        if (llDetectedLinkNumber(0) > 1) return;  // ignore child prim clicks
+        showMenu(llDetectedKey(0));
+    }
+
+    listen(integer channel, string name, key id, string message) {
+        if (channel != MENU_CHANNEL) return;
+        llListenRemove(gMenuHandle);
+        gMenuHandle = -1;
+        if (message == "Start Game") {
+            if (gState == STATE_WAITING && llListFindList(gOccupied, [1]) != -1)
+                startDealing();
+        } else if (message == "End Hand") {
+            if (gState != STATE_IDLE && gState != STATE_WAITING)
+                endHand();
+        } else if (message == "Reset Table") {
+            resetTable();
+        } else if (message == "Status") {
             showStatus();
         }
     }

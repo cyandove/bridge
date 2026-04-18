@@ -35,6 +35,7 @@ integer MSG_DUMMY_REVEAL     = 401;
 integer MSG_BOT_BID_REQUEST  = 220;
 integer MSG_BOT_PLAY_REQUEST = 221;
 integer MSG_REMOVE_CARD      = 212;
+integer MSG_GAME_RESET       = 108;
 
 // ---------------------------------------------------------------------------
 // State
@@ -259,13 +260,14 @@ default {
     }
 
     link_message(integer sender, integer num, string str, key id) {
-        if (num == MSG_BIDDING_START) {
+        if (num == MSG_BIDDING_START || num == MSG_GAME_RESET) {
             gLastBid       = "";
             gIsMyTurn      = FALSE;
             gDummyCards    = [];
             gIsDeclarer    = FALSE;
             gDummySeatID   = -1;
             gDummyRevealed = FALSE;
+            if (num == MSG_GAME_RESET) gHandStr = "";
             updateNameTag();
 
         } else if (num == MSG_BID_MADE) {

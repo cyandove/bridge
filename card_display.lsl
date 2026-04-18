@@ -36,6 +36,7 @@
 integer MSG_CONTRACT_SET  = 103;
 integer MSG_TRICK_DONE    = 105;
 integer MSG_HAND_DONE     = 106;
+integer MSG_GAME_RESET    = 108;
 integer MSG_PLAY_REQUEST  = 201;
 integer MSG_PLAY_RESPONSE = 301;
 integer MSG_REMOVE_CARD   = 212;
@@ -453,7 +454,7 @@ default {
                 }
             }
 
-        } else if (num == MSG_HAND_DONE) {
+        } else if (num == MSG_GAME_RESET || num == MSG_HAND_DONE) {
             clearDummySelection();
             gTrick               = [];
             gDummyHand           = [];
