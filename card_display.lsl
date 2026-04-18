@@ -363,6 +363,12 @@ default {
             gWaitingForDummyPlay = FALSE;
 
         } else if (num == MSG_PLAY_REQUEST) {
+            // Clear previous trick prims now (game_controller already delayed ~3s)
+            integer i;
+            for (i = 0; i < 4; i++) {
+                integer ln = llList2Integer(gTrickLinks, i);
+                if (ln != -1) clearCardPrim(ln);
+            }
             list parts       = llParseString2List(str, ["|"], []);
             integer forDummy = (integer)llList2String(parts, 1);
             if (forDummy) {
@@ -385,11 +391,7 @@ default {
             clearDummySelection();
             gTrick               = [];
             gWaitingForDummyPlay = FALSE;
-            integer i;
-            for (i = 0; i < 4; i++) {
-                integer ln = llList2Integer(gTrickLinks, i);
-                if (ln != -1) clearCardPrim(ln);
-            }
+            // Trick prims cleared in MSG_PLAY_REQUEST (3s later) or MSG_HAND_DONE (5s later)
             updateDisplay();
 
         } else if (num == MSG_DUMMY_REVEAL) {
