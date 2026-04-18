@@ -420,13 +420,11 @@ clearSelection() {
 }
 
 // ---------------------------------------------------------------------------
-// HUD face control (flip to show dummy hand on back face)
+// HUD face control (infrastructure for future dummy-hand panel flip)
 // ---------------------------------------------------------------------------
 setHudFace(integer showDummy) {
-    if (showDummy)
-        llSetLocalRot(<0.0, 1.0, 0.0, 0.0>);  // 180 deg around Y: back face forward
-    else
-        llSetLocalRot(ZERO_ROTATION);
+    // HUD flip disabled for now — dummy cards shown in same panel as own hand
+    llSetLocalRot(ZERO_ROTATION);
 }
 
 // ---------------------------------------------------------------------------

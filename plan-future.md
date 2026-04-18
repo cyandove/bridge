@@ -22,6 +22,9 @@ If all human players stand up mid-rubber, automatically reset the table to IDLE 
 **Show hand point count**
 Automatically calculate and display HCP (high card points) on the HUD when the hand is dealt. Saves players from counting mentally every hand.
 
+**HUD flip for dummy hand**
+The infrastructure for flipping the HUD 180° around the Y axis (to show dummy cards on the back face) is in `setHudFace()` in `hud_controller.lsl` — currently disabled. Re-enable once the back-panel dcard prims are correctly positioned and the texture orientation is confirmed.
+
 **Better HUD hand vs dummy distinction**
 Clearer visual separation between the player's own hand panel and dummy's hand panel — distinct background colour, label, or border.
 

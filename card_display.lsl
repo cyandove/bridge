@@ -135,7 +135,7 @@ clearCardPrim(integer linkNum) {
 // ---------------------------------------------------------------------------
 // Dummy prim selection highlight
 // ---------------------------------------------------------------------------
-vector DUMMY_SELECT_OFFSET = <0.0, 0.05, 0.0>;  // lift off table surface (Y = up in local space)
+vector DUMMY_SELECT_OFFSET = <0.0, 0.0, 0.05>;  // lift off table surface (Z = up in world space)
 
 selectDummyPrim(integer linkNum) {
     list p = llGetLinkPrimitiveParams(linkNum, [PRIM_POS_LOCAL]);

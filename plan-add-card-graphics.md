@@ -10,7 +10,7 @@
 | HUD hand card prims (hcard_0..12) | hud_controller.lsl | Done |
 | HUD dummy card prims (dcard_0..12) | hud_controller.lsl | Done |
 | Two-click card selection (highlight → play) | hud_controller.lsl, card_display.lsl | Done |
-| HUD flip for dummy hand (Y-axis rotation) | hud_controller.lsl | Done |
+| HUD flip for dummy hand (Y-axis rotation) | hud_controller.lsl | Disabled (infra kept) |
 | Inter-trick and end-of-hand pause delays | game_controller.lsl | Done |
 | Suit-violation re-prompt fix (dummy plays) | play_engine.lsl | Done |
 | Dummy HUD card texture orientation | hud_controller.lsl | **Pending** |
@@ -118,7 +118,7 @@ To find the right values: rez a test prim on the table surface, note its local p
 - [ ] After opening lead, 13 dummy prims appear near the dummy seat, face-up
 - [ ] As declarer: clicking a dummy prim highlights it; second click plays the card
 - [ ] As declarer: HUD shows own hand as card images
-- [ ] As declarer after dummy reveal: HUD shows dummy hand on back panel (HUD rotates)
+- [ ] As declarer after dummy reveal: dummy cards appear in HUD (no rotation — same panel as own hand)
 - [ ] Two-click selection works on HUD card prims
 - [ ] Playing a card removes it from the display (prim goes transparent)
 - [ ] After hand ends, all trick and dummy prims clear
