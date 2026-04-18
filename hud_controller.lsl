@@ -410,7 +410,7 @@ clearSelection() {
 // ---------------------------------------------------------------------------
 setHudFace(integer showDummy) {
     if (showDummy)
-        llSetLocalRot(<0.0, 1.0, 0.0, 0.0>);  // 180 deg around Y: back face forward
+        llSetLocalRot(<1.0, 0.0, 0.0, 0.0>);  // 180 deg around X: back face forward
     else
         llSetLocalRot(ZERO_ROTATION);
 }
