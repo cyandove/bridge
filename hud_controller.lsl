@@ -390,7 +390,7 @@ integer parseCardButton(string label) {
 // ---------------------------------------------------------------------------
 // Card prim selection highlight
 // ---------------------------------------------------------------------------
-vector HUD_SELECT_OFFSET = <0.01, 0.0, 0.0>;  // move up on screen (X = vertical axis)
+vector HUD_SELECT_OFFSET = <0.0, 0.0, 0.01>;  // move up on screen (Z = vertical axis)
 
 selectCardPrim(integer linkNum) {
     list p = llGetLinkPrimitiveParams(linkNum, [PRIM_POS_LOCAL]);
