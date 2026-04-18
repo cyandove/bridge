@@ -31,9 +31,10 @@ Name: `purple_back`
 
 ### Where to put them
 
-Upload these textures into **both** objects:
-- The **table root prim** inventory (for `card_display.lsl`)
-- The **HUD root prim** inventory (for `hud_controller.lsl`)
+`llGetInventoryKey` only looks in the inventory of the prim the script is running in.
+Upload the textures into:
+- The prim containing **`card_display.lsl`** (wherever you place that script in the table linkset)
+- The prim containing **`hud_controller.lsl`** (wherever you place that script in the HUD linkset)
 
 ---
 
@@ -98,10 +99,11 @@ Lay these out in a second row below the hand prims, or in a separate panel.
 Select all 26 new prims plus the existing HUD root prim and link them.
 The original HUD root prim (containing `hud_controller.lsl`) must remain the root.
 
-### Placing in table inventory
+### Placing in seat prim inventories
 
-After building the HUD, drag the completed HUD object into the **table root prim's
-inventory** so `seat.lsl` can give it out automatically when a player sits.
+`seat.lsl` runs inside each seat prim and calls `llGiveInventory` from there, so it
+checks that prim's own inventory. After building the HUD, drag the completed HUD object
+into **each of the four seat prims** individually (North, South, East, West).
 
 ---
 
