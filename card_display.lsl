@@ -316,7 +316,8 @@ default {
     }
 
     changed(integer change) {
-        if (change & CHANGED_INVENTORY) llResetScript();
+        if (change & CHANGED_LINK)      llResetScript();   // new prims added — rediscover
+        if (change & CHANGED_INVENTORY) loadNotecard();    // notecard updated — reload layout
     }
 
     dataserver(key query_id, string data) {
