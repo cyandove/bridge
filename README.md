@@ -30,22 +30,16 @@ To leave mid-game, simply stand up. The bot for your seat will take over your ha
 
 ## The HUD
 
-The HUD displays your private hand, sorted by suit (Spades first, Clubs last), with ranks listed high to low. Void suits show a dash:
-
-```
-Bridge HUD
-South
-
-S: A K J T
-H: Q 9 7 5
-D: 8 3
-C: -
-```
+The HUD is a linked object that displays your private hand as card images. Cards are arranged left-to-right in suit order (Spades → Clubs, high to low within each suit). The floating text above the HUD also shows your hand in text form as a quick reference.
 
 - **During bidding**: a dialog appears asking for your bid
-- **During play**: a dialog appears listing your legal cards to play
-- **Touch the HUD** at any time to re-open a dialog you may have missed
+- **During play**: click a card prim to highlight it (it lifts slightly and turns yellow). Click the same card again to play it. Click a different card to move the highlight.
+- **Touch the HUD** at any time to re-open a bid or card dialog (fallback if prims are unavailable)
 - **Touch the table** during a hand to see the current phase, whose turn it is, tricks won, and score
+
+### Playing for Dummy
+
+When it is your turn to play for the dummy's hand, the HUD flips to its back panel, which shows dummy's remaining cards as images. Select a card the same way — first click highlights, second click plays. Alternatively, click one of the dummy card prims floating on the table surface near the dummy seat.
 
 ---
 
@@ -107,18 +101,11 @@ After the opening lead, the **declarer's partner** (the **dummy**) lays their en
 
 ### Playing cards
 
-Play proceeds clockwise. When it is your turn, a dialog shows your hand organised by suit in a fixed grid:
+Play proceeds clockwise. When it is your turn, click a card on the HUD to highlight it, then click it again to play. The first click raises the card slightly and tints it yellow so you can see your selection before committing.
 
-```
-[  S card  ] [  S card  ] [ Next >>  ]
-[  H card  ] [  H card  ] [    -     ]
-[  D card  ] [  D card  ] [    -     ]
-[  C card  ] [  C card  ] [ << Prev  ]
-```
+A dialog fallback is available if card prims are absent — touch the HUD to open it. The dialog shows your hand in a grid; **Next >>** / **<< Prev** page through suits with more than two cards. Void suits and empty slots show **-**.
 
-The title shows your complete hand so you always know how many cards remain in each suit. Each page shows up to 2 cards per suit; **Next >>** reveals more. Void suits or empty slots show **-** (clicking **-** re-opens the same dialog).
-
-When you are playing the **dummy's hand**, the dialog title reads *Play for Dummy* and shows dummy's remaining cards.
+When you are playing the **dummy's hand**, the HUD flips to show dummy's cards. You can also click the floating dummy prims on the table surface directly.
 
 **You must follow suit** if you hold a card of the suit led. If you have no cards of that suit, you may play any card — including a trump.
 
@@ -213,5 +200,7 @@ Each seat prim shows a floating label above it:
 | Receive HUD | Automatic on sit |
 | Start game | Touch the table after sitting |
 | Check game state | Touch the table during a hand |
+| Play a card | Click card prim to highlight, click again to play |
+| Play for dummy | Click dummy prim on HUD back panel or on table |
 | Open bid/play dialog | Automatic on your turn; touch HUD to re-open |
 | Leave | Stand up (bot takes over) |

@@ -66,32 +66,27 @@ If the script shows `(no seat_config)` in floating text, the notecard is missing
 
 ## Step 4 — Build the HUD
 
-Create a single HUD object to be worn as a HUD attachment. You only need **one HUD** — the seat pushes its ID to the HUD automatically when the avatar sits, so no per-seat configuration is required.
+The HUD is a **multi-prim linked object**. See `plan-add-card-graphics.md` § "In-World Build" for the full build procedure (26 card prims + root prim). Quick summary:
 
-1. Add `hud_controller.lsl` to the HUD object's inventory
-2. Name the object `Bridge HUD`
-3. Place it in the **table root prim's inventory** — `seat.lsl` calls `llGiveInventory` when a player sits
+1. Build the root prim, add `hud_controller.lsl` to its inventory
+2. Add 13 `hcard_0`…`hcard_12` prims (player's hand) and 13 `dcard_0`…`dcard_12` prims (dummy hand) and link them all — the original root must remain root
+3. Upload 53 card textures (52 faces + `purple_back`) into the **same prim as `hud_controller.lsl`**
+4. Name the object `Bridge HUD`
+5. Place it in **each of the four seat prims** — `seat.lsl` calls `llGiveInventory` from the seat prim, so the HUD must be in each seat's inventory
 
 No notecard is needed in the HUD itself. When the avatar sits (or attaches the HUD while already seated), the seat script sends `SEAT|N` to the HUD via `llRegionSayTo` on a fixed handshake channel (`-7769`). The HUD stores the seat ID and opens the correct private channel automatically.
 
 ---
 
-## Step 5 — Card Textures (Optional)
+## Step 5 — Add Card Prims to the Table
 
-The dummy's hand is shown as floating text above the dummy's seat prim (handled by `seat.lsl`) and updates live as cards are played. The current `card_display.lsl` handles the trick display area on the table surface. For a graphical card display using prim faces or card prims:
+The table needs 17 additional prims for the graphical card display. See `plan-add-card-graphics.md` § "In-World Build" for detailed positioning. Quick summary:
 
-1. Upload 52 card face textures and 1 card back texture to your SL inventory
-2. Name them consistently, e.g. `card_2C`, `card_AS`, `card_TH`
-3. Modify `card_display.lsl` to call `llSetLinkPrimitiveParamsFast` targeting specific card display prims in the link set, passing `PRIM_TEXTURE` with the appropriate texture UUID
-
-Card integer → texture name mapping:
-```
-suit = card / 13   (0=C 1=D 2=H 3=S)
-rank = card % 13   (0=2 1=3 … 8=T 9=J 10=Q 11=K 12=A)
-ranks = ["2","3","4","5","6","7","8","9","T","J","Q","K","A"]
-suits = ["C","D","H","S"]
-name  = "card_" + rank + suit   // e.g. "card_AS", "card_2C"
-```
+- **4 trick prims** named `trick_N`, `trick_S`, `trick_E`, `trick_W` — laid flat near table centre, one per seat
+- **13 dummy prims** named `dummy_0`…`dummy_12` — laid flat, starting positions don't matter (script repositions them at runtime)
+- Upload 53 card textures into the **same prim as `card_display.lsl`**
+- Link all new prims into the existing table linkset; original root prim must stay root
+- Optionally create a `card_layout` notecard to tune dummy hand positions (see `plan-add-card-graphics.md`)
 
 ---
 
@@ -159,8 +154,11 @@ These are hardcoded in `seat.lsl` as `-7770 - SEAT_ID`. Change both `seat.lsl` a
 - [ ] Table object built with root prim + 4 seat prims, all linked
 - [ ] 7 engine scripts in root prim inventory
 - [ ] `seat.lsl` + correct `seat_config` notecard in each of the 4 seat prim inventories
-- [ ] 1 HUD object built with `hud_controller.lsl`, named `Bridge HUD`
-- [ ] HUD object placed in root prim inventory
+- [ ] HUD built: root + 13 `hcard_*` + 13 `dcard_*` prims linked, named `Bridge HUD`
+- [ ] 53 card textures in the prim containing `hud_controller.lsl`
+- [ ] HUD object placed in **each of the 4 seat prim** inventories
+- [ ] 4 trick prims + 13 dummy prims linked into table linkset
+- [ ] 53 card textures in the prim containing `card_display.lsl`
 - [ ] Table object permissions set appropriately
 - [ ] HUD objects have Copy+Transfer permissions
 - [ ] Verify table floating text shows "Bridge Table / Touch a seat to join" on rez
