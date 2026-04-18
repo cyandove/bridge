@@ -132,6 +132,34 @@ clearCardPrim(integer linkNum) {
 }
 
 // ---------------------------------------------------------------------------
+// Dummy prim selection highlight
+// ---------------------------------------------------------------------------
+vector DUMMY_SELECT_OFFSET = <0.0, 0.0, 0.05>;  // lift off table surface
+
+selectDummyPrim(integer linkNum) {
+    list p = llGetLinkPrimitiveParams(linkNum, [PRIM_POS_LOCAL]);
+    llSetLinkPrimitiveParamsFast(linkNum, [
+        PRIM_POS_LOCAL, llList2Vector(p, 0) + DUMMY_SELECT_OFFSET,
+        PRIM_COLOR, ALL_SIDES, <1.0, 1.0, 0.5>, 1.0
+    ]);
+}
+
+deselectDummyPrim(integer linkNum) {
+    list p = llGetLinkPrimitiveParams(linkNum, [PRIM_POS_LOCAL]);
+    llSetLinkPrimitiveParamsFast(linkNum, [
+        PRIM_POS_LOCAL, llList2Vector(p, 0) - DUMMY_SELECT_OFFSET,
+        PRIM_COLOR, ALL_SIDES, <1.0, 1.0, 1.0>, 1.0
+    ]);
+}
+
+clearDummySelection() {
+    if (gSelectedDummySlot == -1) return;
+    integer ln = llList2Integer(gDummyLinks, gSelectedDummySlot);
+    if (ln != -1) deselectDummyPrim(ln);
+    gSelectedDummySlot = -1;
+}
+
+// ---------------------------------------------------------------------------
 // Dummy prim layout -- loaded from "card_layout" notecard, with defaults.
 // Local space, relative to root prim. N=0 S=1 E=2 W=3.
 // ---------------------------------------------------------------------------
@@ -196,6 +224,7 @@ parseLayoutLine(string line) {
 integer gDeclarerSeat        = -1;
 integer gDummySeat           = -1;
 integer gWaitingForDummyPlay = FALSE;
+integer gSelectedDummySlot   = -1;   // highlighted dummy prim slot (-1 = none)
 
 // gDummyCards: card integer at each dummy prim slot (-1 = empty/not yet placed)
 list gDummyCards = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1];
@@ -274,6 +303,7 @@ default {
         gDummySeat           = -1;
         gDeclarerSeat        = -1;
         gWaitingForDummyPlay = FALSE;
+        gSelectedDummySlot   = -1;
         gDummyCards          = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1];
         discoverLinks();
         integer i;
@@ -304,9 +334,23 @@ default {
         if (slot == -1) return;
         integer card = llList2Integer(gDummyCards, slot);
         if (card == -1) return;
-        gWaitingForDummyPlay = FALSE;
-        llMessageLinked(LINK_SET, MSG_PLAY_RESPONSE,
-            (string)gDeclarerSeat + "|" + (string)card, NULL_KEY);
+
+        if (slot == gSelectedDummySlot) {
+            // Second click on same card -- play it
+            deselectDummyPrim(linkNum);
+            gSelectedDummySlot   = -1;
+            gWaitingForDummyPlay = FALSE;
+            llMessageLinked(LINK_SET, MSG_PLAY_RESPONSE,
+                (string)gDeclarerSeat + "|" + (string)card, NULL_KEY);
+        } else {
+            // Switch highlight to this card
+            if (gSelectedDummySlot != -1) {
+                integer prevLn = llList2Integer(gDummyLinks, gSelectedDummySlot);
+                if (prevLn != -1) deselectDummyPrim(prevLn);
+            }
+            gSelectedDummySlot = slot;
+            selectDummyPrim(linkNum);
+        }
     }
 
     link_message(integer sender, integer num, string str, key id) {
@@ -323,6 +367,7 @@ default {
             if (forDummy) {
                 gWaitingForDummyPlay = TRUE;
             } else {
+                clearDummySelection();
                 gWaitingForDummyPlay = FALSE;
             }
 
@@ -336,6 +381,7 @@ default {
             else          updateDisplay();
 
         } else if (num == MSG_TRICK_DONE) {
+            clearDummySelection();
             gTrick               = [];
             gWaitingForDummyPlay = FALSE;
             integer i;
@@ -403,6 +449,7 @@ default {
             }
 
         } else if (num == MSG_HAND_DONE) {
+            clearDummySelection();
             gTrick               = [];
             gDummyHand           = [];
             gDummySeat           = -1;

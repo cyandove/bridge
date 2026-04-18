@@ -60,7 +60,8 @@ list gHandLinks      = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1]; // hcard_0..12
 list gDCardLinks     = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1]; // dcard_0..12
 list gHandLinkCards  = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1]; // card at each hand slot
 list gDCardLinkCards = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1]; // card at each dummy slot
-integer gHasPrims    = FALSE;
+integer gHasPrims     = FALSE;
+integer gSelectedSlot = -1;   // highlighted card slot (-1 = none)
 
 // ---------------------------------------------------------------------------
 // Card helpers
@@ -373,6 +374,38 @@ integer parseCardButton(string label) {
 }
 
 // ---------------------------------------------------------------------------
+// Card prim selection highlight
+// ---------------------------------------------------------------------------
+vector HUD_SELECT_OFFSET = <0.0, 0.01, 0.0>;  // move up on screen
+
+selectCardPrim(integer linkNum) {
+    list p = llGetLinkPrimitiveParams(linkNum, [PRIM_POS_LOCAL]);
+    llSetLinkPrimitiveParamsFast(linkNum, [
+        PRIM_POS_LOCAL, llList2Vector(p, 0) + HUD_SELECT_OFFSET,
+        PRIM_COLOR, ALL_SIDES, <1.0, 1.0, 0.5>, 1.0
+    ]);
+}
+
+deselectCardPrim(integer linkNum) {
+    list p = llGetLinkPrimitiveParams(linkNum, [PRIM_POS_LOCAL]);
+    llSetLinkPrimitiveParamsFast(linkNum, [
+        PRIM_POS_LOCAL, llList2Vector(p, 0) - HUD_SELECT_OFFSET,
+        PRIM_COLOR, ALL_SIDES, <1.0, 1.0, 1.0>, 1.0
+    ]);
+}
+
+// Must be called BEFORE changing gPlayingDummy so the right link array is used
+clearSelection() {
+    if (gSelectedSlot == -1) return;
+    list linkArr;
+    if (!gPlayingDummy) linkArr = gHandLinks;
+    else                linkArr = gDCardLinks;
+    integer ln = llList2Integer(linkArr, gSelectedSlot);
+    if (ln != -1) deselectCardPrim(ln);
+    gSelectedSlot = -1;
+}
+
+// ---------------------------------------------------------------------------
 // HUD face control (flip to show dummy hand on back face)
 // ---------------------------------------------------------------------------
 setHudFace(integer showDummy) {
@@ -397,8 +430,10 @@ assignSeat(integer seatID) {
     gDoubled     = 0;
     gHighSide    = -1;
     gDoublerSide = -1;
-    gDummyHand   = [];
+    gDummyHand    = [];
     gPlayingDummy = FALSE;
+    clearSelection();
+    gSelectedSlot = -1;
 
     if (gHandshakeHandle != -1) {
         llListenRemove(gHandshakeHandle);
@@ -422,6 +457,7 @@ default {
         gBidMode           = FALSE;
         gSelectMode        = FALSE;
         gPendingPlayPrompt = FALSE;
+        gSelectedSlot      = -1;
         gHandLinkCards     = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1];
         gDCardLinkCards    = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1];
         discoverLinks();
@@ -436,6 +472,8 @@ default {
             gBidMode           = FALSE;
             gSelectMode        = FALSE;
             gPendingPlayPrompt = FALSE;
+            clearSelection();
+            gSelectedSlot      = -1;
             if (gHasPrims) clearAllCardPrims();
             llSetText("Bridge HUD\nSit to connect", <0.5,0.5,0.5>, 1.0);
             openHandshake();
@@ -475,11 +513,13 @@ default {
 
             if (llGetListLength(gHand) == 13) {
                 // New deal — full reset
+                clearSelection();
                 gDummyHand         = [];
                 gPlayingDummy      = FALSE;
                 gBidMode           = FALSE;
                 gSelectMode        = FALSE;
                 gPendingPlayPrompt = FALSE;
+                gSelectedSlot      = -1;
                 setHudFace(FALSE);
                 if (gHasPrims) clearAllCardPrims();
             }
@@ -501,8 +541,10 @@ default {
 
             // A dummy card was removed while we were in dummy select mode — exit it
             if (gSelectMode && gPlayingDummy && llGetListLength(gDummyHand) < prevLen) {
+                clearSelection();
                 gSelectMode   = FALSE;
                 gPlayingDummy = FALSE;
+                gSelectedSlot = -1;
                 updateHandDisplay();
             }
 
@@ -530,6 +572,7 @@ default {
 
         if (llGetSubString(message, 0, 10) == "PLAY_PROMPT") {
             // "PLAY_PROMPT|forDummy"
+            clearSelection();  // before gPlayingDummy changes
             list parts    = llParseString2List(message, ["|"], []);
             gPlayingDummy = (integer)llList2String(parts, 1);
             gSelectMode   = TRUE;
@@ -593,25 +636,38 @@ default {
         integer linkNum = llDetectedLinkNumber(0);
 
         if (gSelectMode) {
-            integer slot = -1;
+            list linkArr;
+            list cardArr;
+            if (!gPlayingDummy) { linkArr = gHandLinks;  cardArr = gHandLinkCards;  }
+            else                { linkArr = gDCardLinks; cardArr = gDCardLinkCards; }
+
+            integer slot = llListFindList(linkArr, [linkNum]);
             integer card = -1;
-            if (!gPlayingDummy) {
-                slot = llListFindList(gHandLinks, [linkNum]);
-                if (slot != -1) card = llList2Integer(gHandLinkCards, slot);
-            } else {
-                slot = llListFindList(gDCardLinks, [linkNum]);
-                if (slot != -1) card = llList2Integer(gDCardLinkCards, slot);
+            if (slot != -1) card = llList2Integer(cardArr, slot);
+
+            if (card == -1) {
+                if (!gHasPrims) showCardDialog(gCardPage);
+                return;
             }
-            if (card != -1) {
+
+            if (slot == gSelectedSlot) {
+                // Second click on same card -- play it
+                deselectCardPrim(linkNum);
+                gSelectedSlot = -1;
                 gSelectMode   = FALSE;
                 gPlayingDummy = FALSE;
                 setHudFace(FALSE);
                 updateHandDisplay();
                 llSay(gChannel, "PLAY|" + (string)card);
-                return;
+            } else {
+                // Switch highlight to this card
+                if (gSelectedSlot != -1) {
+                    integer prevLn = llList2Integer(linkArr, gSelectedSlot);
+                    if (prevLn != -1) deselectCardPrim(prevLn);
+                }
+                gSelectedSlot = slot;
+                selectCardPrim(linkNum);
             }
-            // No card prim matched — fallback to dialog if no prims present
-            if (!gHasPrims) showCardDialog(gCardPage);
             return;
         }
 
