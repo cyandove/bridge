@@ -21,6 +21,7 @@ integer MSG_BID_ADVANCE   = 203;
 integer MSG_BID_INVALID   = 204;
 integer MSG_BID_MADE      = 205;
 integer MSG_BID_RESPONSE  = 300;
+integer MSG_CHAT          = 109;
 
 // ---------------------------------------------------------------------------
 // Bid encoding
@@ -193,7 +194,7 @@ processBid(integer seat, integer bid) {
 
     // Record in auction log
     gAuction += [bid];
-    llSay(0, seatName(seat) + ": " + bidStr(bid));
+    llMessageLinked(LINK_SET, MSG_CHAT, seatName(seat) + ": " + bidStr(bid), NULL_KEY);
 
     if (bid == BID_PASS) {
         gPassCount++;
@@ -247,7 +248,7 @@ processBid(integer seat, integer bid) {
 // All 4 players passed without a bid — hand is passed out, re-deal
 // ---------------------------------------------------------------------------
 auctionPassed() {
-    llSay(0, "Passed out — re-dealing.");
+    llMessageLinked(LINK_SET, MSG_CHAT, "Passed out - re-dealing.", NULL_KEY);
     // Signal game_controller to re-deal (reuse MSG_CONTRACT_SET with level=0)
     llMessageLinked(LINK_SET, MSG_CONTRACT_SET, "-1|0|0|0", NULL_KEY);
 }
@@ -264,8 +265,8 @@ auctionComplete() {
     string doubledStr = "";
     if (gDoubled == 1) doubledStr = " Doubled";
     else if (gDoubled == 2) doubledStr = " Redoubled";
-    llSay(0, "Contract: " + (string)level + llList2String(suitNames, suit)
-        + doubledStr + " by " + seatName(declarer));
+    llMessageLinked(LINK_SET, MSG_CHAT, "Contract: " + (string)level + llList2String(suitNames, suit)
+        + doubledStr + " by " + seatName(declarer), NULL_KEY);
 
     llMessageLinked(LINK_SET, MSG_CONTRACT_SET,
         (string)declarer + "|" + (string)level + "|"

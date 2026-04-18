@@ -19,6 +19,7 @@ integer MSG_PLAY_START      = 104;
 integer MSG_TRICK_DONE      = 105;
 integer MSG_HAND_DONE       = 106;
 integer MSG_RUBBER_DONE     = 107;
+integer MSG_CHAT            = 109;
 
 // Deck manager
 integer MSG_REMOVE_CARD     = 212;
@@ -73,7 +74,8 @@ integer gMenuHandle  = -1;  // listen handle for table menu dialog
 integer MENU_CHANNEL = -7801;
 
 // Seat occupancy: 1=human present, 0=bot
-list gOccupied = [0, 0, 0, 0];
+list gOccupied    = [0, 0, 0, 0];
+list gAvatarKeys  = [NULL_KEY, NULL_KEY, NULL_KEY, NULL_KEY];
 
 // Contract from bidding_engine: "declarer|level|suit|doubled"
 // doubled: 0=none 1=doubled 2=redoubled
@@ -124,6 +126,29 @@ string seatName(integer seat) {
     return "West";
 }
 
+sayToPlayers(string msg) {
+    integer i;
+    for (i = 0; i < 4; i++) {
+        key k = llList2Key(gAvatarKeys, i);
+        if (k != NULL_KEY) llRegionSayTo(k, 0, msg);
+    }
+}
+
+string vulStr() {
+    integer vNS = llList2Integer(gVulnerable, 0);
+    integer vEW = llList2Integer(gVulnerable, 1);
+    if (vNS && vEW) return "Both vul";
+    if (vNS)        return "NS vul";
+    if (vEW)        return "EW vul";
+    return "None vul";
+}
+
+string scoreLineStr() {
+    return "Games NS " + (string)llList2Integer(gGamesWon, 0)
+        + " / EW " + (string)llList2Integer(gGamesWon, 1)
+        + "  " + vulStr();
+}
+
 // ---------------------------------------------------------------------------
 // State transitions
 // ---------------------------------------------------------------------------
@@ -139,7 +164,7 @@ startDealing() {
     gTricksNS    = 0;
     gTricksEW    = 0;
     gPendingLead = -1;
-    llSetText("Dealing...", <1,1,0>, 1.0);
+    llSetText("Bridge Table\n" + scoreLineStr() + "\nDealing...", <1,1,0>, 1.0);
     llMessageLinked(LINK_SET, MSG_GAME_START, "", NULL_KEY);
     // deck_manager will respond with MSG_DEAL_DONE
 }
@@ -148,7 +173,7 @@ startBidding() {
     gState = STATE_BIDDING;
     // Bidder to dealer's left opens the auction
     gCurrentSeat = leftOf(gDealer);
-    llSetText("Bidding\n" + seatName(gCurrentSeat) + "'s turn", <0.5,0.8,1>, 1.0);
+    updateTableText();
     llMessageLinked(LINK_SET, MSG_BIDDING_START,
         (string)gDealer + "|" + (string)gCurrentSeat, NULL_KEY);
     llMessageLinked(LINK_SET, MSG_BID_REQUEST,
@@ -168,8 +193,7 @@ contractSet(string str) {
     gState = STATE_PLAYING;
     // Opening lead is by LHO of declarer
     gCurrentSeat = lhoOf(gDeclarer);
-
-    llSetText("Playing\nLead: " + seatName(gCurrentSeat), <0,1,0.5>, 1.0);
+    updateTableText();
     llMessageLinked(LINK_SET, MSG_PLAY_START,
         str + "|" + (string)gCurrentSeat, NULL_KEY);
     requestPlay(gCurrentSeat);
@@ -198,8 +222,8 @@ trickDone(string str) {
         gHandDoneStr = str;
         llSetTimerEvent(5.0);
     } else {
-        llSetText("Playing\nLead: " + seatName(winner)
-            + "\nTricks: " + (string)gTrickCount, <0,1,0.5>, 1.0);
+        gCurrentSeat = winner;
+        updateTableText();
         gPendingLead = winner;
         llSetTimerEvent(3.0);
     }
@@ -215,7 +239,7 @@ scoreUpdate(string str) {
 
     if (rubberDone) {
         llMessageLinked(LINK_SET, MSG_RUBBER_DONE, str, NULL_KEY);
-        llSay(0, "Rubber complete! Starting new rubber.");
+        sayToPlayers("Rubber complete! Starting new rubber.");
         gGamesWon   = [0, 0];
         gVulnerable = [0, 0];
         gHandCount  = 0;
@@ -237,7 +261,7 @@ integer MSG_BID_ADVANCE = 203;
 
 advanceBid(string str) {
     gCurrentSeat = (integer)llList2String(llParseString2List(str, ["|"], []), 0);
-    llSetText("Bidding\n" + seatName(gCurrentSeat) + "'s turn", <0.5,0.8,1>, 1.0);
+    updateTableText();
     llMessageLinked(LINK_SET, MSG_BID_REQUEST, str, NULL_KEY);
 }
 
@@ -245,10 +269,25 @@ advanceBid(string str) {
 // Table menu (shown on any touch)
 // ---------------------------------------------------------------------------
 updateTableText() {
-    if (llListFindList(gOccupied, [1]) != -1)
-        llSetText("Bridge Table\nTouch when all players are ready", <1,1,1>, 1.0);
-    else
-        llSetText("Bridge Table\nTouch a seat to join", <1,1,1>, 1.0);
+    string txt = "Bridge Table\n" + scoreLineStr() + "\n";
+    if (gState == STATE_BIDDING) {
+        txt += "Bidding - " + seatName(gCurrentSeat) + "'s turn";
+        llSetText(txt, <0.5,0.8,1>, 1.0);
+    } else if (gState == STATE_PLAYING || gState == STATE_SCORING) {
+        list suitNames = ["C","D","H","S","N"];
+        string contract = (string)gContractLevel + llList2String(suitNames, gContractSuit);
+        if (gDoubled == 1) contract += "x";
+        if (gDoubled == 2) contract += "xx";
+        txt += contract + " by " + seatName(gDeclarer)
+            + "\nNS " + (string)gTricksNS + " / EW " + (string)gTricksEW;
+        llSetText(txt, <0,1,0.5>, 1.0);
+    } else if (llListFindList(gOccupied, [1]) != -1) {
+        txt += "Touch to start";
+        llSetText(txt, <1,1,1>, 1.0);
+    } else {
+        txt += "Touch a seat to join";
+        llSetText(txt, <1,1,1>, 1.0);
+    }
 }
 
 showMenu(key toucher) {
@@ -272,7 +311,7 @@ endHand() {
     gTricksEW    = 0;
     gState       = STATE_WAITING;
     llMessageLinked(LINK_SET, MSG_GAME_RESET, "0", NULL_KEY);
-    llSay(0, "Hand ended.");
+    sayToPlayers("Hand ended.");
     updateTableText();
 }
 
@@ -290,7 +329,7 @@ resetTable() {
     gDealer        = NORTH;
     gState         = STATE_WAITING;
     llMessageLinked(LINK_SET, MSG_GAME_RESET, "1", NULL_KEY);
-    llSay(0, "Table reset.");
+    sayToPlayers("Table reset.");
     updateTableText();
 }
 
@@ -304,14 +343,13 @@ showStatus() {
     if (gState == STATE_DEALING) {
         phase = "Dealing";
     } else if (gState == STATE_BIDDING) {
-        phase = "Bidding — " + seatName(gCurrentSeat) + "'s turn";
+        phase = "Bidding - " + seatName(gCurrentSeat) + "'s turn";
     } else if (gState == STATE_PLAYING) {
         string contract = (string)gContractLevel
             + llList2String(suitNames, gContractSuit);
-        if (gDoubled == 1) contract += " Dbl";
-        if (gDoubled == 2) contract += " Rdbl";
+        if (gDoubled == 1) contract += "x";
+        if (gDoubled == 2) contract += "xx";
         phase = "Playing " + contract + " by " + seatName(gDeclarer)
-            + "\nTurn: " + seatName(gCurrentSeat)
             + "  Tricks: NS " + (string)gTricksNS
             + " / EW " + (string)gTricksEW;
     } else if (gState == STATE_SCORING) {
@@ -320,18 +358,7 @@ showStatus() {
         phase = "Waiting";
     }
 
-    string vul;
-    integer vNS = llList2Integer(gVulnerable, 0);
-    integer vEW = llList2Integer(gVulnerable, 1);
-    if      (vNS && vEW)  vul = "Both vul";
-    else if (vNS)          vul = "NS vul";
-    else if (vEW)          vul = "EW vul";
-    else                   vul = "None vul";
-
-    llSay(0, phase
-        + "\nGames — NS: " + (string)llList2Integer(gGamesWon, 0)
-        + "  EW: " + (string)llList2Integer(gGamesWon, 1)
-        + "  " + vul);
+    sayToPlayers(phase + "\n" + scoreLineStr());
 }
 
 // ---------------------------------------------------------------------------
@@ -342,6 +369,7 @@ default {
         gState      = STATE_IDLE;
         gDealer     = NORTH;
         gOccupied   = [0, 0, 0, 0];
+        gAvatarKeys = [NULL_KEY, NULL_KEY, NULL_KEY, NULL_KEY];
         gGamesWon   = [0, 0];
         gVulnerable = [0, 0];
         startWaiting();
@@ -403,21 +431,27 @@ default {
         } else if (num == MSG_SCORE_UPDATE) {
             scoreUpdate(str);
 
+        // Routed chat from any engine — send only to seated humans
+        } else if (num == MSG_CHAT) {
+            sayToPlayers(str);
+
         // Seat occupied by human
         } else if (num == MSG_SEAT_OCCUPIED) {
             list parts = llParseString2List(str, ["|"], []);
             integer seat = (integer)llList2String(parts, 0);
-            gOccupied = llListReplaceList(gOccupied, [1], seat, seat);
+            gOccupied    = llListReplaceList(gOccupied,   [1],  seat, seat);
+            gAvatarKeys  = llListReplaceList(gAvatarKeys, [id], seat, seat);
             if (gState == STATE_WAITING) {
-                llSetText("Bridge Table\nTouch when all players are ready", <1,1,1>, 1.0);
+                updateTableText();
                 if ((integer)llListStatistics(LIST_STAT_SUM, gOccupied) == 1)
-                    llSay(0, "Touch the table when all players are ready to start the game.");
+                    sayToPlayers("Touch the table when all players are ready to start.");
             }
 
         // Seat vacated
         } else if (num == MSG_SEAT_VACATED) {
             integer seat = (integer)str;
-            gOccupied = llListReplaceList(gOccupied, [0], seat, seat);
+            gOccupied   = llListReplaceList(gOccupied,   [0],        seat, seat);
+            gAvatarKeys = llListReplaceList(gAvatarKeys, [NULL_KEY], seat, seat);
         }
     }
 }

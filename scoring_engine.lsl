@@ -18,6 +18,7 @@ integer MSG_CONTRACT_SET = 103;
 integer MSG_HAND_DONE    = 106;
 integer MSG_GAME_RESET   = 108;
 integer MSG_SCORE_UPDATE = 400;
+integer MSG_CHAT         = 109;
 
 // ---------------------------------------------------------------------------
 // Seat / partnership helpers
@@ -200,10 +201,10 @@ scoreHand(integer tricksNS, integer tricksEW) {
     string vulStr = "";
     if (vulNS) vulStr += " [NS vul]";
     if (vulEW) vulStr += " [EW vul]";
-    llSay(0, "Score — NS: " + (string)(gAboveNS + gBelowNS)
+    llMessageLinked(LINK_SET, MSG_CHAT, "Score - NS: " + (string)(gAboveNS + gBelowNS)
         + "  EW: " + (string)(gAboveEW + gBelowEW)
         + "  Games NS/EW: " + (string)gamesNS + "/" + (string)gamesEW
-        + vulStr);
+        + vulStr, NULL_KEY);
 
     llMessageLinked(LINK_SET, MSG_SCORE_UPDATE,
         (string)gamesNS + "|" + (string)gamesEW + "|"

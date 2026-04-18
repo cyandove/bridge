@@ -33,6 +33,7 @@ integer MSG_HAND_REQUEST    = 213;
 integer MSG_HAND_DATA       = 214;
 integer MSG_SUIT_CHECK      = 215;
 integer MSG_SUIT_CHECK_RESPONSE = 216;
+integer MSG_CHAT            = 109;
 
 // ---------------------------------------------------------------------------
 // Card helpers
@@ -167,10 +168,10 @@ finaliseTrick() {
     else        gTricksEW++;
     gTricksTotal++;
 
-    llSay(0, seatName(winner) + " wins trick "
+    llMessageLinked(LINK_SET, MSG_CHAT, seatName(winner) + " wins trick "
         + (string)gTricksTotal
         + " (NS " + (string)gTricksNS
-        + " / EW " + (string)gTricksEW + ")");
+        + " / EW " + (string)gTricksEW + ")", NULL_KEY);
 
     // Reset trick state
     gTrick   = [];
@@ -196,7 +197,7 @@ acceptPlay(integer seat, integer card) {
     }
     gTrick += [seat, card];
 
-    llSay(0, seatName(seat) + " plays " + cardStr(card));
+    llMessageLinked(LINK_SET, MSG_CHAT, seatName(seat) + " plays " + cardStr(card), NULL_KEY);
     llMessageLinked(LINK_SET, MSG_TRICK_PLAYED,
         (string)seat + "|" + (string)card, NULL_KEY);
 
@@ -236,7 +237,7 @@ validatePlay(integer seat, integer card) {
     // Declarer plays dummy's cards when dummy is on lead
     if (expected == gDummy) expected = gDeclarer;
     if (seat != expected) {
-        llSay(0, seatName(seat) + ": not your turn.");
+        llMessageLinked(LINK_SET, MSG_CHAT, seatName(seat) + ": not your turn.", NULL_KEY);
         return;
     }
 
@@ -321,8 +322,8 @@ default {
 
             if (has && cardSuit(card) != gLedSuit) {
                 // Must follow suit — reject
-                llSay(0, seatName(seat) + ": must follow suit ("
-                    + llList2String(["C","D","H","S"], gLedSuit) + ").");
+                llMessageLinked(LINK_SET, MSG_CHAT, seatName(seat) + ": must follow suit ("
+                    + llList2String(["C","D","H","S"], gLedSuit) + ").", NULL_KEY);
                 // If the rejected seat was the dummy, re-prompt the declarer
                 integer reqSeat  = seat;
                 integer forDummy = 0;

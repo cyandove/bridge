@@ -32,6 +32,7 @@ integer MSG_SEAT_OCCUPIED    = 403;
 integer MSG_SEAT_VACATED     = 404;
 
 integer MSG_DUMMY_REVEAL     = 401;
+integer MSG_TRICK_DONE       = 105;
 integer MSG_BOT_BID_REQUEST  = 220;
 integer MSG_BOT_PLAY_REQUEST = 221;
 integer MSG_REMOVE_CARD      = 212;
@@ -53,6 +54,9 @@ string  gLastBid          = "";
 list    gDummyCards       = [];
 
 integer gReady            = FALSE;
+integer gTricksNS         = 0;
+integer gTricksEW         = 0;
+integer gPlayStarted      = FALSE;
 integer gIsDeclarer       = FALSE;
 integer gDummySeatID      = -1;
 integer gDummyRevealed    = FALSE;
@@ -120,6 +124,7 @@ updateNameTag() {
         label = direction + "\n" + llList2String(BOT_NAMES, gSeatID);
     }
     if (gLastBid != "") label += "\n" + gLastBid;
+    if (gPlayStarted) label += "\nNS " + (string)gTricksNS + " / EW " + (string)gTricksEW;
     if (llGetListLength(gDummyCards) > 0) label += "\n" + formatHand(gDummyCards);
     if (gIsHuman && gReady && !gIsMyTurn) label += "\nReady";
     if (gIsMyTurn) {
@@ -171,7 +176,7 @@ onSit(key avatarKey) {
     llRegionSayTo(avatarKey, HUD_HANDSHAKE_CHANNEL, "SEAT|" + (string)gSeatID);
 
     llMessageLinked(LINK_SET, MSG_SEAT_OCCUPIED,
-        (string)gSeatID + "|" + gAvatarName, NULL_KEY);
+        (string)gSeatID + "|" + gAvatarName, avatarKey);
 
     if (gHandStr != "")
         llRegionSayTo(avatarKey, listenChannel(), "HAND|" + gHandStr);
@@ -272,6 +277,9 @@ default {
             gLastBid       = "";
             gIsMyTurn      = FALSE;
             gReady         = FALSE;
+            gTricksNS      = 0;
+            gTricksEW      = 0;
+            gPlayStarted   = FALSE;
             gDummyCards    = [];
             gIsDeclarer    = FALSE;
             gDummySeatID   = -1;
@@ -352,6 +360,13 @@ default {
                 llRegionSayTo(gAvatarKey, listenChannel(), "DUMMY_HAND|" + str);
                 gDummyRevealed = TRUE;
             }
+
+        } else if (num == MSG_TRICK_DONE) {
+            list parts = llParseString2List(str, ["|"], []);
+            gTricksNS    = (integer)llList2String(parts, 1);
+            gTricksEW    = (integer)llList2String(parts, 2);
+            gPlayStarted = TRUE;
+            updateNameTag();
 
         } else if (num == MSG_REMOVE_CARD) {
             // str = "seat|card" — remove played card from dummy display
