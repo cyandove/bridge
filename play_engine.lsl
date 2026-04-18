@@ -237,7 +237,6 @@ validatePlay(integer seat, integer card) {
     if (expected == gDummy) expected = gDeclarer;
     if (seat != expected) {
         llSay(0, seatName(seat) + ": not your turn.");
-        llMessageLinked(LINK_SET, MSG_PLAY_REQUEST, (string)seat, NULL_KEY);
         return;
     }
 
