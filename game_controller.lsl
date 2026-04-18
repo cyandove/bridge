@@ -66,6 +66,7 @@ integer gTricksNS    = 0;
 integer gTricksEW    = 0;
 integer gPendingLead = -1;  // winner waiting for inter-trick delay
 integer gHandCount   = 0;   // hands played this rubber
+string  gHandDoneStr = "";  // saved for delayed MSG_HAND_DONE after trick 13
 
 // Seat occupancy: 1=human present, 0=bot
 list gOccupied = [0, 0, 0, 0];
@@ -188,15 +189,15 @@ trickDone(string str) {
     gCurrentSeat = winner;
 
     if (gTrickCount == 13) {
-        // Hand complete
-        gState = STATE_SCORING;
-        llSetTimerEvent(0);
-        llMessageLinked(LINK_SET, MSG_HAND_DONE, str, NULL_KEY);
+        // Hand complete -- pause so players can see the final trick before clearing
+        gState       = STATE_SCORING;
+        gHandDoneStr = str;
+        llSetTimerEvent(5.0);
     } else {
         llSetText("Playing\nLead: " + seatName(winner)
             + "\nTricks: " + (string)gTrickCount, <0,1,0.5>, 1.0);
         gPendingLead = winner;
-        llSetTimerEvent(1.0);
+        llSetTimerEvent(3.0);
     }
 }
 
@@ -304,6 +305,8 @@ default {
             integer lead = gPendingLead;
             gPendingLead = -1;
             requestPlay(lead);
+        } else if (gState == STATE_SCORING) {
+            llMessageLinked(LINK_SET, MSG_HAND_DONE, gHandDoneStr, NULL_KEY);
         } else if (gState == STATE_WAITING) {
             startDealing();
         }

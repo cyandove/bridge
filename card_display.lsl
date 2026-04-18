@@ -276,6 +276,11 @@ default {
         gWaitingForDummyPlay = FALSE;
         gDummyCards          = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1];
         discoverLinks();
+        integer i;
+        for (i = 0; i < 13; i++) {
+            integer ln = llList2Integer(gDummyLinks, i);
+            if (ln != -1) clearCardPrim(ln);
+        }
         loadNotecard();
         updateDisplay();
     }
