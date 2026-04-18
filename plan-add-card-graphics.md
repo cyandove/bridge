@@ -72,7 +72,7 @@ Starting position doesn't matter — script repositions them at runtime. Same si
 
 ---
 
-### HUD Prims (26 new prims)
+### HUD Prims (27 new prims)
 
 Link all into the HUD linked object. The original root prim (with `hud_controller.lsl`) must stay root.
 
@@ -80,7 +80,7 @@ Link all into the HUD linked object. The original root prim (with `hud_controlle
 
 **Dummy prims (13):** `dcard_0` through `dcard_12` — dummy's cards, shown on HUD when playing for dummy
 
-**Ready prim (1):** `start` — green prim button; shows "Ready" floating text on attach, "✓ Ready" when clicked. Text clears when the deal arrives.
+**Ready prim (1):** `start` — green prim button; shows "Ready" floating text on attach, "[ Ready ]" in bright green when clicked. Text clears when the deal arrives.
 
 After building, place the complete HUD object into **each of the four seat prim inventories** (seat.lsl gives it from the seat prim, not the root prim).
 
@@ -121,7 +121,7 @@ To find the right values: rez a test prim on the table surface, note its local p
 - [ ] After opening lead, 13 dummy prims appear near the dummy seat, face-up
 - [ ] As declarer: clicking a dummy prim highlights it; second click plays the card
 - [ ] As declarer: HUD shows own hand as card images
-- [ ] As declarer after dummy reveal: dummy cards appear in HUD (no rotation — same panel as own hand)
+- [ ] As declarer after dummy reveal: dummy cards appear in HUD same panel as own hand
 - [ ] Two-click selection works on HUD card prims
 - [ ] Playing a card removes it from the display (prim goes transparent)
 - [ ] After hand ends, all trick and dummy prims clear

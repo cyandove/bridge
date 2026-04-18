@@ -69,7 +69,7 @@ If the script shows `(no seat_config)` in floating text, the notecard is missing
 The HUD is a **multi-prim linked object**. See `plan-add-card-graphics.md` § "In-World Build" for the full build procedure (26 card prims + root prim). Quick summary:
 
 1. Build the root prim, add `hud_controller.lsl` to its inventory
-2. Add 13 `hcard_0`…`hcard_12` prims (player's hand) and 13 `dcard_0`…`dcard_12` prims (dummy hand) and link them all — the original root must remain root
+2. Add 13 `hcard_0`…`hcard_12` prims (player's hand), 13 `dcard_0`…`dcard_12` prims (dummy hand), and 1 green prim named `start` (the Ready button), then link them all — the original root must remain root
 3. Upload 53 card textures (52 faces + `purple_back`) into the **same prim as `hud_controller.lsl`**
 4. Name the object `Bridge HUD`
 5. Place it in **each of the four seat prims** — `seat.lsl` calls `llGiveInventory` from the seat prim, so the HUD must be in each seat's inventory
@@ -104,7 +104,7 @@ For the `llGiveInventory` call in `seat.lsl` to work, the HUD objects in the tab
 
 ## Script Communication Reference
 
-All scripts use `llMessageLinked(LINK_SET, num, str, NULL_KEY)` on these message numbers:
+All scripts use `llMessageLinked(LINK_SET, num, str, ...)` on these message numbers. Most use `NULL_KEY` as the key parameter; exceptions are noted.
 
 | Constant | Value | Direction | Meaning |
 |---|---|---|---|
@@ -116,6 +116,8 @@ All scripts use `llMessageLinked(LINK_SET, num, str, NULL_KEY)` on these message
 | `MSG_TRICK_DONE` | 105 | play → controller/display | Trick complete |
 | `MSG_HAND_DONE` | 106 | controller → scoring/display | All 13 tricks done |
 | `MSG_RUBBER_DONE` | 107 | scoring → controller | Rubber complete |
+| `MSG_GAME_RESET`  | 108 | controller → all | Abort hand (0) or full reset (1) |
+| `MSG_CHAT`        | 109 | any engine → controller | Chat routed to seated players only |
 | `MSG_BID_REQUEST` | 200 | controller → seat | Request a bid |
 | `MSG_PLAY_REQUEST` | 201 | controller → seat | Request a card |
 | `MSG_HAND_UPDATE` | 202 | deck → seats/bot | New hand data |
@@ -129,8 +131,8 @@ All scripts use `llMessageLinked(LINK_SET, num, str, NULL_KEY)` on these message
 | `MSG_SCORE_UPDATE` | 400 | scoring → controller | Score state |
 | `MSG_DUMMY_REVEAL` | 401 | play → seat/display | Show dummy hand (seat updates hover text) |
 | `MSG_TRICK_PLAYED` | 402 | play → display/bot | Card placed in trick |
-| `MSG_SEAT_OCCUPIED` | 403 | seat → controller/display | Human sat down |
-| `MSG_SEAT_VACATED` | 404 | seat → controller/display | Human stood up |
+| `MSG_SEAT_OCCUPIED` | 403 | seat → controller | Human sat down (key param = avatar key) |
+| `MSG_SEAT_VACATED` | 404 | seat → controller | Human stood up |
 
 ---
 
@@ -154,7 +156,7 @@ These are hardcoded in `seat.lsl` as `-7770 - SEAT_ID`. Change both `seat.lsl` a
 - [ ] Table object built with root prim + 4 seat prims, all linked
 - [ ] 7 engine scripts in root prim inventory
 - [ ] `seat.lsl` + correct `seat_config` notecard in each of the 4 seat prim inventories
-- [ ] HUD built: root + 13 `hcard_*` + 13 `dcard_*` prims linked, named `Bridge HUD`
+- [ ] HUD built: root + 13 `hcard_*` + 13 `dcard_*` + `start` prim linked, named `Bridge HUD`
 - [ ] 53 card textures in the prim containing `hud_controller.lsl`
 - [ ] HUD object placed in **each of the 4 seat prim** inventories
 - [ ] 4 trick prims + 13 dummy prims linked into table linkset
@@ -162,6 +164,7 @@ These are hardcoded in `seat.lsl` as `-7770 - SEAT_ID`. Change both `seat.lsl` a
 - [ ] Table object permissions set appropriately
 - [ ] HUD objects have Copy+Transfer permissions
 - [ ] Verify table floating text shows "Bridge Table / Touch a seat to join" on rez
-- [ ] Sit on a seat — verify HUD is given, name tag updates, and chat announces "Touch the table when all players are ready"
-- [ ] Touch table after sitting — verify deal starts
-- [ ] Touch table mid-hand — verify status report appears in chat
+- [ ] Sit on a seat — verify HUD is given, name tag updates, and a private message says "Touch the table when all players are ready to start"
+- [ ] Click Ready button on HUD — verify seat hover text turns green with "Ready"
+- [ ] Touch table → Start Game — verify deal starts
+- [ ] Touch table mid-hand → Status — verify status appears in private chat (not local chat)

@@ -19,10 +19,11 @@ This table plays **Rubber Bridge** — the classic social format. A rubber is wo
 
 1. Sit in any of the four seat prims (North, South, East, West)
 2. You will automatically receive a **Bridge HUD** — attach it to your screen
-3. Wait for any other human players to sit, then **touch the table** to start the deal
-4. Bots fill any empty seats automatically
+3. Click the green **Ready** button on your HUD when you're ready to play
+4. When your group is ready, **touch the table** and select **Start Game**
+5. Bots fill any empty seats automatically
 
-When the first player sits, the table announces in chat that it's ready to start. Touch it whenever your group is ready — there's no time limit.
+Game announcements (bids, plays, scores) are whispered privately to seated players only.
 
 To leave mid-game, simply stand up. The bot for your seat will take over your hand.
 
@@ -30,16 +31,16 @@ To leave mid-game, simply stand up. The bot for your seat will take over your ha
 
 ## The HUD
 
-The HUD is a linked object that displays your private hand as card images. Cards are arranged left-to-right in suit order (Spades → Clubs, high to low within each suit). The floating text above the HUD also shows your hand in text form as a quick reference.
+The HUD is a linked object that displays your private hand as card images. Cards are arranged left-to-right in suit order (Spades → Clubs, high to low within each suit).
 
+- **Ready button**: a green prim labelled **Ready** on the HUD. Click it before the deal to signal you're ready; it shows `[ Ready ]` in green. Clicking again un-readies. The button clears when your hand is dealt.
 - **During bidding**: a dialog appears asking for your bid
 - **During play**: click a card prim to highlight it (it lifts slightly and turns yellow). Click the same card again to play it. Click a different card to move the highlight.
-- **Touch the HUD** at any time to re-open a bid or card dialog (fallback if prims are unavailable)
-- **Touch the table** during a hand to see the current phase, whose turn it is, tricks won, and score
+- **Touch the table** at any time to open the table menu (Start Game, End Hand, Reset Table, Status)
 
 ### Playing for Dummy
 
-When it is your turn to play for the dummy's hand, the HUD flips to its back panel, which shows dummy's remaining cards as images. Select a card the same way — first click highlights, second click plays. Alternatively, click one of the dummy card prims floating on the table surface near the dummy seat.
+When it is your turn to play for the dummy's hand, the HUD shows dummy's remaining cards. Select a card the same way — first click highlights, second click plays. Alternatively, click one of the dummy card prims floating on the table surface near the dummy seat.
 
 ---
 
@@ -123,7 +124,7 @@ The declarer's side needs to take at least `contract level + 6` tricks. For exam
 
 ## Scoring
 
-Scores are posted to chat at the end of each hand.
+Scores are sent privately to all seated players at the end of each hand.
 
 ### Trick points (below the line — count toward game)
 
@@ -186,9 +187,11 @@ You can sit down mid-rubber to take over a bot's seat and cards at any time.
 Each seat prim shows a floating label above it:
 
 - **Direction & name** — North/South/East/West and the player's name (or bot name)
+- **Ready** — shown in green on a human seat that has clicked the Ready button (clears when play begins)
 - **Last bid** — shown during the auction; replaced by the contract on the declarer's seat and **Dummy** on the dummy's seat when play begins
+- **Trick score** — running NS / EW trick count shown on all seats during play
 - **Dummy's hand** — the dummy's remaining cards are displayed live above the dummy seat
-- **Green highlight** — the seat whose turn it currently is glows green
+- **Green highlight** — the seat whose turn it currently is glows green; a Ready seat also glows green
 
 ---
 
@@ -198,9 +201,10 @@ Each seat prim shows a floating label above it:
 |---|---|
 | Sit | Touch a seat prim |
 | Receive HUD | Automatic on sit |
-| Start game | Touch the table after sitting |
-| Check game state | Touch the table during a hand |
+| Signal ready | Click the green Ready button on HUD |
+| Start game | Touch table → Start Game |
+| End hand / reset | Touch table → End Hand or Reset Table |
+| Check game state | Touch table → Status |
 | Play a card | Click card prim to highlight, click again to play |
-| Play for dummy | Click dummy prim on HUD back panel or on table |
-| Open bid/play dialog | Automatic on your turn; touch HUD to re-open |
+| Play for dummy | Click dummy prim on HUD or on table |
 | Leave | Stand up (bot takes over) |

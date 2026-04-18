@@ -6,12 +6,6 @@ Ideas for branches after `add-card-graphics`.
 
 ## Near-term
 
-**Touch table for menu**
-Replace "touch to start" with a proper menu: Start Game, End Game, Reset Game. Avoids accidental starts and gives a clean way to abort a rubber.
-
-**Ready button on HUD**
-Add a "Ready" button players press before each deal starts. The table waits until all humans have clicked Ready (or a timeout) before dealing. Removes the need to touch the table.
-
 **Reset game if last player stands**
 If all human players stand up mid-rubber, automatically reset the table to IDLE so the next group doesn't inherit a broken game state.
 
