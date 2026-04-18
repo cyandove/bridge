@@ -10,18 +10,18 @@
 # a temporary helper prim to measure local coordinates where you want the
 # first card (dummy_0) of each dummy seat to appear.
 
-north_base=<-0.72,1.10,0.02>
-north_spread=<0.12,0.0,0.0>
-north_rot=<0.0,0.0,0.0,1.0>
+north_base=<0.18626, -0.75350, -0.57680>
+north_spread=<0.0,0.0,-0.12>
+north_rot=<0.49149, -0.47289, 0.50894, 0.52516>
 
-south_base=<-0.72,-1.10,0.02>
-south_spread=<0.12,0.0,0.0>
-south_rot=<0.0,0.0,1.0,0.0>
+south_base=<0.13676, 0.83649, -0.68643>
+south_spread=<0.0,0.0,0.12>
+south_rot=<-0.48255, 0.49970, 0.51745, 0.49970>
 
-east_base=<1.10,-0.72,0.02>
-east_spread=<0.0,0.12,0.0>
-east_rot=<0.0,0.0,0.707,0.707>
+east_base=<0.22805, 0.77956, 0.89959>
+east_spread=<0.0,-0.12,0.0>
+east_rot=<0.01853, 0.00615, 0.70728, 0.70667>
 
-west_base=<-1.10,-0.72,0.02>
+west_base=<0.13259, -0.64663, -0.85433>
 west_spread=<0.0,0.12,0.0>
-west_rot=<0.0,0.0,-0.707,0.707>
+west_rot=<0.70751, -0.70643, -0.00616, 0.01850>
