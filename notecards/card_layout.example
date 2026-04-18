@@ -11,7 +11,7 @@
 # first card (dummy_0) of each dummy seat to appear.
 
 north_base=<0.18626, -0.75350, -0.57680>
-north_spread=<0.0,0.0,-0.12>
+north_spread=<0.0,0.0,0.12>
 north_rot=<0.49149, -0.47289, 0.50894, 0.52516>
 
 south_base=<0.13676, 0.83649, -0.68643>
