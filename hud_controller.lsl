@@ -166,9 +166,15 @@ discoverLinks() {
 updateStartPrim() {
     if (gStartLink == -1) return;
     if (gReady)
-        llSetLinkPrimitiveParamsFast(gStartLink, [PRIM_TEXT, "\u2713 Ready", <0.3,1.0,0.3>, 1.0]);
+        llSetLinkPrimitiveParamsFast(gStartLink, [
+            PRIM_COLOR, ALL_SIDES, <0.2,1.0,0.2>, 1.0,
+            PRIM_TEXT, "[ Ready ]", <0.3,1.0,0.3>, 1.0
+        ]);
     else
-        llSetLinkPrimitiveParamsFast(gStartLink, [PRIM_TEXT, "Ready", <1.0,1.0,1.0>, 1.0]);
+        llSetLinkPrimitiveParamsFast(gStartLink, [
+            PRIM_COLOR, ALL_SIDES, <0.2,0.6,0.2>, 1.0,
+            PRIM_TEXT, "Ready", <1.0,1.0,1.0>, 1.0
+        ]);
 }
 
 // ---------------------------------------------------------------------------
