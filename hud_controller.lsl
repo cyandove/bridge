@@ -294,7 +294,9 @@ updateHandDisplay() {
         if (gSelectMode && !gPlayingDummy) display += "[SELECT CARD]";
     }
 
-    llSetText(display, <1,1,1>, 1.0);
+    vector col = <1,1,1>;
+    if (gBidMode || gSelectMode) col = <0.3,1.0,0.3>;
+    llSetText(display, col, 1.0);
 }
 
 // ---------------------------------------------------------------------------
