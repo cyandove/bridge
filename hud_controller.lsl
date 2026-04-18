@@ -373,6 +373,16 @@ integer parseCardButton(string label) {
 }
 
 // ---------------------------------------------------------------------------
+// HUD face control (flip to show dummy hand on back face)
+// ---------------------------------------------------------------------------
+setHudFace(integer showDummy) {
+    if (showDummy)
+        llSetLocalRot(<0.0, 1.0, 0.0, 0.0>);  // 180 deg around Y: back face forward
+    else
+        llSetLocalRot(ZERO_ROTATION);
+}
+
+// ---------------------------------------------------------------------------
 // Handshake / seat assignment
 // ---------------------------------------------------------------------------
 openHandshake() {
@@ -432,6 +442,7 @@ default {
             llRegionSay(HUD_HANDSHAKE_CHANNEL,
                 "HUD_READY|" + (string)llGetOwner());
         } else {
+            setHudFace(FALSE);
             if (gHandshakeHandle != -1) {
                 llListenRemove(gHandshakeHandle);
                 gHandshakeHandle = -1;
@@ -469,6 +480,7 @@ default {
                 gBidMode           = FALSE;
                 gSelectMode        = FALSE;
                 gPendingPlayPrompt = FALSE;
+                setHudFace(FALSE);
                 if (gHasPrims) clearAllCardPrims();
             }
             if (gHasPrims) updateHandPrims();
@@ -496,8 +508,8 @@ default {
 
             if (gPendingPlayPrompt) {
                 gPendingPlayPrompt = FALSE;
+                setHudFace(TRUE);
                 if (!gHasPrims) showCardDialog(0);
-                // gHasPrims: prims now textured, gSelectMode=TRUE, player clicks a card
             }
             return;
         }
@@ -523,14 +535,14 @@ default {
             gSelectMode   = TRUE;
             gBidMode      = FALSE;
             gPendingPlayPrompt = FALSE;
-            updateHandDisplay();
             if (gPlayingDummy && llGetListLength(gDummyHand) == 0) {
                 gPendingPlayPrompt = TRUE;
-                // Wait for DUMMY_HAND before showing anything
-            } else if (!gHasPrims) {
-                showCardDialog(0);
+                // Wait for DUMMY_HAND before flipping or showing dialog
+            } else {
+                setHudFace(gPlayingDummy);
+                if (!gHasPrims) showCardDialog(0);
             }
-            // gHasPrims: prims already showing the hand, player clicks a card
+            updateHandDisplay();
             return;
         }
 
@@ -570,6 +582,7 @@ default {
             if (card >= 0) {
                 gSelectMode   = FALSE;
                 gPlayingDummy = FALSE;
+                setHudFace(FALSE);
                 updateHandDisplay();
                 llSay(gChannel, "PLAY|" + (string)card);
             }
@@ -592,6 +605,7 @@ default {
             if (card != -1) {
                 gSelectMode   = FALSE;
                 gPlayingDummy = FALSE;
+                setHudFace(FALSE);
                 updateHandDisplay();
                 llSay(gChannel, "PLAY|" + (string)card);
                 return;

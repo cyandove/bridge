@@ -10,23 +10,25 @@
 //   suits: C D H S
 //   back:  purple_back
 //
+// Dummy hand layout (position, spread, rotation) is loaded from a notecard
+// named "card_layout" in the same prim.  See card_layout.example for format.
+// Hardcoded defaults are used if the notecard is absent.
+//
 // Falls back to llSetText when the named prims are absent.
 //
 // Clicking a dummy prim while dummy play is pending submits that card
-// as MSG_PLAY_RESPONSE on behalf of the declarer — a shortcut that lets
-// the declarer play dummy by touching the physical card on the table
-// instead of using the HUD dialog.
+// as MSG_PLAY_RESPONSE on behalf of the declarer.
 //
 // Messages received:
-//   MSG_CONTRACT_SET  (103) — str="declarer|level|suit|doubled"
-//   MSG_TRICK_DONE    (105) — str="winner|ns|ew"
-//   MSG_HAND_DONE     (106) — clear all displays
-//   MSG_PLAY_REQUEST  (201) — str="seat|forDummy"
-//   MSG_REMOVE_CARD   (212) — str="seat|card"
-//   MSG_DUMMY_REVEAL  (401) — str="seat|c0|c1|..."
-//   MSG_TRICK_PLAYED  (402) — str="seat|card"
-//   MSG_SEAT_OCCUPIED (403) — str="seat|name"
-//   MSG_SEAT_VACATED  (404) — str="seat"
+//   MSG_CONTRACT_SET  (103) -- str="declarer|level|suit|doubled"
+//   MSG_TRICK_DONE    (105) -- str="winner|ns|ew"
+//   MSG_HAND_DONE     (106) -- clear all displays
+//   MSG_PLAY_REQUEST  (201) -- str="seat|forDummy"
+//   MSG_REMOVE_CARD   (212) -- str="seat|card"
+//   MSG_DUMMY_REVEAL  (401) -- str="seat|c0|c1|..."
+//   MSG_TRICK_PLAYED  (402) -- str="seat|card"
+//   MSG_SEAT_OCCUPIED (403) -- str="seat|name"
+//   MSG_SEAT_VACATED  (404) -- str="seat"
 
 // ---------------------------------------------------------------------------
 // Message constants
@@ -58,7 +60,7 @@ string cardStr(integer card) {
          + llList2String(suitSymbols, card / 13);
 }
 
-// Sort cards for display: S high→low, H high→low, D high→low, C high→low
+// Sort cards for display: S high->low, H high->low, D high->low, C high->low
 list sortCardsForDisplay(list cards) {
     list result = [];
     integer s;
@@ -130,28 +132,63 @@ clearCardPrim(integer linkNum) {
 }
 
 // ---------------------------------------------------------------------------
-// Dummy prim layout constants (local space, relative to root prim)
-// Assumes a ~2m x 2m table; cards ~0.12m wide, 0.02m above surface.
-// Adjust to match your table geometry.
+// Dummy prim layout -- loaded from "card_layout" notecard, with defaults.
+// Local space, relative to root prim. N=0 S=1 E=2 W=3.
 // ---------------------------------------------------------------------------
-list DUMMY_BASE_POS = [
+list gDummyBasePos = [
     <-0.72,  1.10, 0.02>,   // North seat
     <-0.72, -1.10, 0.02>,   // South seat
     < 1.10, -0.72, 0.02>,   // East seat
     <-1.10, -0.72, 0.02>    // West seat
 ];
-list DUMMY_SPREAD = [
+list gDummySpread = [
     <0.12, 0.0,  0.0>,      // North: spread along +X
     <0.12, 0.0,  0.0>,      // South: spread along +X
     <0.0,  0.12, 0.0>,      // East:  spread along +Y
     <0.0,  0.12, 0.0>       // West:  spread along +Y
 ];
-list DUMMY_CARD_ROT = [
+list gDummyCardRot = [
     <0.0,  0.0,  0.0,    1.0>,    // North: no rotation
     <0.0,  0.0,  1.0,    0.0>,    // South: 180 deg around Z
     <0.0,  0.0,  0.707,  0.707>,  // East:   90 deg around Z
     <0.0,  0.0, -0.707,  0.707>   // West:  -90 deg around Z
 ];
+
+// ---------------------------------------------------------------------------
+// Notecard loading
+// ---------------------------------------------------------------------------
+string  LAYOUT_NOTECARD = "card_layout";
+key     gNotecardQuery  = NULL_KEY;
+integer gNotecardLine   = 0;
+
+loadNotecard() {
+    if (llGetInventoryType(LAYOUT_NOTECARD) != INVENTORY_NOTECARD) return;
+    gNotecardLine  = 0;
+    gNotecardQuery = llGetNotecardLine(LAYOUT_NOTECARD, 0);
+}
+
+parseLayoutLine(string line) {
+    if (line == "" || llGetSubString(line, 0, 0) == "#") return;
+    integer eq = llSubStringIndex(line, "=");
+    if (eq == -1) return;
+    string k = llGetSubString(line, 0, eq - 1);
+    string v = llGetSubString(line, eq + 1, -1);
+
+    integer seat  = -1;
+    string  field = "";
+    if (llGetSubString(k, 0, 4) == "north") { seat = 0; field = llGetSubString(k, 6, -1); }
+    else if (llGetSubString(k, 0, 4) == "south") { seat = 1; field = llGetSubString(k, 6, -1); }
+    else if (llGetSubString(k, 0, 3) == "east")  { seat = 2; field = llGetSubString(k, 5, -1); }
+    else if (llGetSubString(k, 0, 3) == "west")  { seat = 3; field = llGetSubString(k, 5, -1); }
+    if (seat == -1) return;
+
+    if (field == "base")
+        gDummyBasePos = llListReplaceList(gDummyBasePos, [(vector)v],   seat, seat);
+    else if (field == "spread")
+        gDummySpread  = llListReplaceList(gDummySpread,  [(vector)v],   seat, seat);
+    else if (field == "rot")
+        gDummyCardRot = llListReplaceList(gDummyCardRot, [(rotation)v], seat, seat);
+}
 
 // ---------------------------------------------------------------------------
 // State
@@ -239,7 +276,20 @@ default {
         gWaitingForDummyPlay = FALSE;
         gDummyCards          = [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1];
         discoverLinks();
+        loadNotecard();
         updateDisplay();
+    }
+
+    changed(integer change) {
+        if (change & CHANGED_INVENTORY) llResetScript();
+    }
+
+    dataserver(key query_id, string data) {
+        if (query_id != gNotecardQuery) return;
+        if (data == EOF) return;
+        parseLayoutLine(data);
+        gNotecardLine++;
+        gNotecardQuery = llGetNotecardLine(LAYOUT_NOTECARD, gNotecardLine);
     }
 
     touch_start(integer total) {
@@ -301,9 +351,9 @@ default {
             list sorted = sortCardsForDisplay(gDummyHand);
 
             if (llList2Integer(gDummyLinks, 0) != -1) {
-                vector   base   = llList2Vector(DUMMY_BASE_POS, gDummySeat);
-                vector   spread = llList2Vector(DUMMY_SPREAD,   gDummySeat);
-                rotation rot    = llList2Rot(DUMMY_CARD_ROT,    gDummySeat);
+                vector   base   = llList2Vector(gDummyBasePos, gDummySeat);
+                vector   spread = llList2Vector(gDummySpread,  gDummySeat);
+                rotation rot    = llList2Rot(gDummyCardRot,    gDummySeat);
                 for (i = 0; i < 13; i++) {
                     integer ln = llList2Integer(gDummyLinks, i);
                     integer c  = -1;
