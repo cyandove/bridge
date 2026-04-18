@@ -116,6 +116,19 @@ list sortCardsForDisplay(list hand) {
     return result;
 }
 
+integer hcpCount(list hand) {
+    integer pts = 0;
+    integer i;
+    for (i = 0; i < llGetListLength(hand); i++) {
+        integer rank = cardRank(llList2Integer(hand, i));
+        if      (rank == 12) pts += 4; // Ace
+        else if (rank == 11) pts += 3; // King
+        else if (rank == 10) pts += 2; // Queen
+        else if (rank == 9)  pts += 1; // Jack
+    }
+    return pts;
+}
+
 string handSuitRows(list hand) {
     list suitLabels = ["C", "D", "H", "S"];
     string out = "";
@@ -273,10 +286,13 @@ updateHandDisplay() {
 
     string display = "Bridge HUD\n" + dir + "\n";
     if (gSelectMode && gPlayingDummy) display += "[PLAY FOR DUMMY]\n";
-    display += "\n" + handSuitRows(gHand);
 
-    if (gBidMode)                      display += "[BIDDING - touch to bid]";
-    if (gSelectMode && !gPlayingDummy) display += "[SELECT CARD]";
+    if (gBidMode) {
+        display += (string)hcpCount(gHand) + " HCP\n[BIDDING - touch to bid]";
+    } else {
+        display += "\n" + handSuitRows(gHand);
+        if (gSelectMode && !gPlayingDummy) display += "[SELECT CARD]";
+    }
 
     llSetText(display, <1,1,1>, 1.0);
 }
