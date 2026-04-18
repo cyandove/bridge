@@ -134,7 +134,7 @@ clearCardPrim(integer linkNum) {
 // ---------------------------------------------------------------------------
 // Dummy prim selection highlight
 // ---------------------------------------------------------------------------
-vector DUMMY_SELECT_OFFSET = <0.0, 0.0, 0.05>;  // lift off table surface
+vector DUMMY_SELECT_OFFSET = <0.0, 0.05, 0.0>;  // lift off table surface (Y = up in local space)
 
 selectDummyPrim(integer linkNum) {
     list p = llGetLinkPrimitiveParams(linkNum, [PRIM_POS_LOCAL]);
@@ -363,11 +363,13 @@ default {
             gWaitingForDummyPlay = FALSE;
 
         } else if (num == MSG_PLAY_REQUEST) {
-            // Clear previous trick prims now (game_controller already delayed ~3s)
-            integer i;
-            for (i = 0; i < 4; i++) {
-                integer ln = llList2Integer(gTrickLinks, i);
-                if (ln != -1) clearCardPrim(ln);
+            // Clear previous trick prims only when a new trick is starting
+            if (llGetListLength(gTrick) == 0) {
+                integer i;
+                for (i = 0; i < 4; i++) {
+                    integer ln = llList2Integer(gTrickLinks, i);
+                    if (ln != -1) clearCardPrim(ln);
+                }
             }
             list parts       = llParseString2List(str, ["|"], []);
             integer forDummy = (integer)llList2String(parts, 1);
